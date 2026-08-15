@@ -925,6 +925,13 @@ void Window::UpdateAllTabShowWindows() {
 	}
 }
 
+void Window::SetWindowTitle(const std::string& title)
+{
+	m_windowTitle = title;
+	if (m_hWnd == nullptr) return;
+	SetWindowTextA(m_hWnd, title.c_str());
+}
+
 int Window::GetClientWidth() const
 {
 	RECT rect;

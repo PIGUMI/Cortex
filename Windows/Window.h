@@ -100,6 +100,8 @@ public:
 	void UpdateTabShowWindow(int tabID, bool parentVisible = true);
 	void ShowOrHideTabControls(int tabID, BOOL parentVisible);
 	const std::map<int, HWND>& GetChildWindows() const { return m_childWindows; }
+	std::string GetWindowTitle() const { return m_windowTitle; }
+	void SetWindowTitle(const std::string& title);
 	int GetClientWidth() const;
 	int GetClientHeight() const;
 public:
@@ -111,6 +113,7 @@ public:
 private:
 	int m_windowWidth = 720;
 	int m_windowHeight = 480;
+	std::string m_windowTitle = "Window";
 	HWND m_hWnd = nullptr;
 	std::map<int, HWND> m_childWindows;
 	std::map<int, bool> m_buttonClicked;
