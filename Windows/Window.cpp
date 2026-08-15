@@ -67,7 +67,7 @@ Window* Window::GetInstance()
 		m_instance->m_wcex = {};
 		m_instance->m_wcex.cbSize = sizeof(WNDCLASSEX);
 		m_instance->m_wcex.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-		m_instance->m_wcex.lpszClassName = "Pixeon3";
+		m_instance->m_wcex.lpszClassName = m_instance->m_windowTitle.c_str();
 		m_instance->m_wcex.lpfnWndProc = WndProc;
 		m_instance->m_wcex.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
 		m_instance->m_wcex.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
