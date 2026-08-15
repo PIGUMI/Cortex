@@ -9,6 +9,7 @@
 #include "Window.h"
 #include "DirectX12.h"
 
+// Windowsアプリケーションのエントリーポイント
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	/* Windowの初期化 */
@@ -17,6 +18,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	window->SetWindowWidth(720);
 	window->SetWindowHeight(480);
 	window->Initialize(hInstance, nCmdShow);
+
+	window->CreateSubSeparateWindow(1, "Sub Window", 100, 100, 400, 300);
+
 
 	/* DirectX12の初期化 */
 	DirectX::DirectX12* directX12 = DirectX::DirectX12::Get();
