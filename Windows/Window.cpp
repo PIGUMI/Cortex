@@ -1,16 +1,15 @@
 ﻿#include "Window.h"
-#include "DirectX12.h"
 using namespace std;
 #include <Windows.h>
 #include <commctrl.h>
 #include <set>
 
-extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+//extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /* ウインドウプロシージャ */
 LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))return true;
+	//if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))return true;
 
 	switch (message) {
 	case WM_COMMAND:
@@ -37,7 +36,7 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			UINT w = LOWORD(lParam);
 			UINT h = HIWORD(lParam);
-			DirectX::DirectX12::Get()->RequestResize(w, h);
+			//DirectX::DirectX12::Get()->RequestResize(w, h);
 		}
 		return 0;
 	case WM_DESTROY:
