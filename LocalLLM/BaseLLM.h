@@ -3,11 +3,17 @@
 * llama.cppを使用したLLMの基底クラス
 */
 
-#include "llama.h"
 #include "Helper.h"
 #include <string>
 #include <nlohmann/json.hpp>
 #include <map>
+
+// llama.hの実体はBaseLLM.cppでのみincludeする(ポインタでしか使わないため)
+// これによりBaseLLM.hを利用する側のプロジェクトはllama.cppのインクルードパスを設定しなくて済む
+struct llama_model;
+struct llama_context;
+struct llama_vocab;
+struct llama_sampler;
 
 using ordered_json = nlohmann::ordered_json;
 

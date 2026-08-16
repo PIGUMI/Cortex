@@ -1,18 +1,19 @@
 /*
-* ƒeƒ“ƒvƒŒ[ƒg
-* C/C++‚ðŽg—p‚µ‚½WindowsƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÌŠî–{“I‚Èƒeƒ“ƒvƒŒ[ƒg
-* ISO C++20 €‹’
+* ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆ
+* C/C++ã‚’ä½¿ç”¨ã—ãŸWindowsã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®åŸºæœ¬çš„ãªãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆ
+* ISO C++20 æº–æ‹ 
 * Application/main.cpp
-* ÅIXV“ú: 2026/08/16
+* æœ€çµ‚æ›´æ–°æ—¥: 2026/08/16
 */
 
 #include "Window.h"
 #include "DirectX12.h"
+#include "BaseLLM.h"
 
-// WindowsƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÌƒGƒ“ƒgƒŠ[ƒ|ƒCƒ“ƒg
+// Windowsã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®ã‚¨ãƒ³ãƒˆãƒªãƒ¼ãƒã‚¤ãƒ³ãƒˆ
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	/* Window‚Ì‰Šú‰» */
+	/* Windowã®åˆæœŸåŒ– */
 	Window* window = Window::GetInstance();
 	window->SetWindowTitle("Template");
 	window->SetWindowWidth(720);
@@ -22,16 +23,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	window->CreateSubSeparateWindow(1, "Sub Window", 100, 100, 400, 300);
 
 
-	/* DirectX12‚Ì‰Šú‰» */
+	/* DirectX12ã®åˆæœŸåŒ– */
 	DirectX::DirectX12* directX12 = DirectX::DirectX12::Get();
 	directX12->Init(window->GetMainWindowHandle(), window->GetClientWidth(), window->GetClientHeight());
 
-	/* Descriptor‚Ì‰Šú‰» */
+	/* Descriptorã®åˆæœŸåŒ– */
 	DirectX::Descriptor* descriptor = DirectX::Descriptor::Get();
 	descriptor->Init();
 
 
-	/* Šî‘bƒ‹[ƒv */
+	/* åŸºç¤Žãƒ«ãƒ¼ãƒ— */
 	MSG msg = {};
 
 	try
@@ -49,12 +50,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 			else
 			{
-				// XVˆ—
+				// æ›´æ–°å‡¦ç†
 
-				// •`‰æˆ—
+				// æç”»å‡¦ç†
 				directX12->BeginDraw();
 
-				// ‚±‚±‚É•`‰æˆ—‚ð’Ç‰Á‚·‚é
+				// ã“ã“ã«æç”»å‡¦ç†ã‚’è¿½åŠ ã™ã‚‹
 
 				directX12->EndDraw();
 				directX12->ApplyResizeIfNeeded();

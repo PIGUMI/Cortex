@@ -1,4 +1,5 @@
 ﻿#include "BaseLLM.h"
+#include "llama.h"
 #include "json-schema-to-grammar.h"
 #include <iostream>
 
