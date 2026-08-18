@@ -20,7 +20,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	window->SetWindowHeight(480);
 	window->Initialize(hInstance, nCmdShow);
 
-	window->CreateSubSeparateWindow(1, "Sub Window", 100, 100, 400, 300);
+	HWND Sub = window->CreateSubSeparateWindow(1, "Sub Window", 1000, 100, 400, 900);
+	window->CreateTextBox(2, "", 5, 10, 370, 700, Sub);
+	window->CreateRichEdit(3, "", 5, 720, 300, 100, Sub);
+	window->CreateButton(4, "Send", 310, 720, 60, 100, Sub);
 
 
 	/* DirectX12の初期化 */
@@ -32,8 +35,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	descriptor->Init();
 
 
+	BaseLLM* llm = new BaseLLM("Model/Qwen2.5-Coder-1.5B-Instruct-Q8_0.gguf", nullptr, 99, 4096, 512, 1024);
+	
+
 	/* 基礎ループ */
 	MSG msg = {};
+
+	bool isRunning = false;
 
 	try
 	{
@@ -51,6 +59,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			else
 			{
 				// 更新処理
+
+				if(window->IsButtonClicked(4))
+				{
+					std::string prompt = window->GetEditText(3);
+					window->SetBoxText(3, "");
+					window->AddTextBoxText(2, "User: " + prompt + "\r\n");
+					llm->ProcessPrompt(prompt, 1024);
+					isRunning = true;
+				}
+				if (!llm->IsActive() && isRunning)
+				{
+					isRunning = false;
+					window->AddTextBoxText(2, "LLM: " + llm->ProcessPrompt("") + "\r\n");
+				}
+
 
 				// 描画処理
 				directX12->BeginDraw();

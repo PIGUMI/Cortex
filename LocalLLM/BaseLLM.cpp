@@ -23,18 +23,21 @@ BaseLLM::BaseLLM(const char* modelPath, ordered_json* schema, int gpuLayer, int 
 	{
 		m_bActive = false;
 		std::cout << "LLMモデルのロードに失敗しました。" << std::endl;
+		MessageBox(nullptr, "LLMモデルのロードに失敗しました。", "エラー", MB_OK | MB_ICONERROR);
 		return;
 	}
 	if (!CreateContext(contextSize, BatchSize))
 	{
 		m_bActive = false;
 		std::cout << "LLMコンテキストの作成に失敗しました。" << std::endl;
+		MessageBox(nullptr, "LLMコンテキストの作成に失敗しました。", "エラー", MB_OK | MB_ICONERROR);
 		return;
 	}
 	if(!CreateSampler(schema))
 	{
 		m_bActive = false;
 		std::cout << "LLMサンプラーの作成に失敗しました。" << std::endl;
+		MessageBox(nullptr, "LLMサンプラーの作成に失敗しました。", "エラー", MB_OK | MB_ICONERROR);
 		return;
 	}
 
