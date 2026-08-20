@@ -35,7 +35,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	descriptor->Init();
 
 
-	BaseLLM* llm = new BaseLLM("Model/Qwen2.5-Coder-1.5B-Instruct-Q8_0.gguf", nullptr, 99, 4096, 512, 1024);
+	BaseLLM* llm = new BaseLLM("Model/Qwen3.5-4B-UD-Q4_K_XL.gguf", nullptr, 99, 4096, 512, 1024);
 	
 
 	/* 基礎ループ */
@@ -65,14 +65,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 					std::string prompt = window->GetEditText(3);
 					window->SetBoxText(3, "");
 					window->AddTextBoxText(2, "User: " + prompt + "\r\n");
-					llm->ProcessPrompt(prompt, 1024);
+
+					window->AddTextBoxText(2, "LLM: " + Helper::Utf8ToAnsi(llm->ProcessPrompt(Helper::AnsiToUtf8(prompt))) + "\r\n");
 					isRunning = true;
 				}
-				if (!llm->IsActive() && isRunning)
-				{
-					isRunning = false;
-					window->AddTextBoxText(2, "LLM: " + llm->ProcessPrompt("") + "\r\n");
-				}
+			
 
 
 				// 描画処理

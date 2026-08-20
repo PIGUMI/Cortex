@@ -98,7 +98,7 @@ private:
 	bool CreateSampler(ordered_json* schema);
 protected:
 	bool m_bActive = false;
-	std::string m_sSystemPrompt = "日本語で応答してください。";
+	std::string m_sSystemPrompt = "Please respond in Japanese.";
 	std::string m_sModelPath;
 private:
 	// Reload()でcontext/samplerを作り直すために構築時の設定を保持しておく
