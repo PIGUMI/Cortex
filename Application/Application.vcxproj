@@ -77,7 +77,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -95,7 +95,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -111,7 +111,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -129,7 +129,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -148,6 +148,9 @@
     </ProjectReference>
     <ProjectReference Include="..\LocalLLM\LocalLLM.vcxproj">
       <Project>{51eb3e23-22b9-4679-9dc7-2ddc13272751}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\thread\thread.vcxproj">
+      <Project>{a244d6e1-5559-400b-bb8d-35a0188f1323}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Windows\Windows.vcxproj">
       <Project>{7c4c48da-1012-4891-b2c9-c77e8f97bf7e}</Project>

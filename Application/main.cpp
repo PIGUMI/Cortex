@@ -10,6 +10,8 @@
 #include "DirectX12.h"
 #include "Helper.h"
 #include "llamaServer.h"
+#include "Worker.h"
+#include <mutex>
 
 
 // Windowsアプリケーションのエントリーポイント
@@ -41,6 +43,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	/* ループ処理 */
 	{
+		std::mutex llmResultMutex;
+		std::string m_llmResult = "";
+		Worker* worker = nullptr;
+		bool resultDisplayed = true; // まだ表示していない結果があるかどうか
+
 		/* 基礎ループ */
 		MSG msg = {};
 
@@ -63,17 +70,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				{
 					// 更新処理
 
-					if (window->IsButtonClicked(4))
+					if (window->IsButtonClicked(4) && (worker == nullptr || worker->IsFinished()))
 					{
+						window->AddTextBoxText(2, "You: " + window->GetEditText(3) + "\r\n\r\n");
+				
+						delete worker; // 前回分の後始末(joinable済みなのですぐ壊せる)
+
 						std::string ansiInput = window->GetEditText(3);
+						std::string utf8Input = Helper::AnsiToUtf8(ansiInput);
+						window->SetBoxText(3, ""); // 入力欄をクリア
 
-						std::string utf8Input = Helper::AnsiToUtf8(ansiInput);// UTF-8へ変換
+						resultDisplayed = false;
+						worker = new Worker([&m_llmResult, &llmResultMutex, utf8Input]()
+							{
+								std::string response = LocalLLM::CallLlamaServer(utf8Input);
 
-						std::string utf8Response = LocalLLM::CallLlamaServer(utf8Input);
-						std::string ansiResponse = Helper::Utf8ToAnsi(utf8Response);// ANSIへ変換
+								std::lock_guard<std::mutex> lock(llmResultMutex);
+								m_llmResult = response;
+							});
+					}
 
-						window->AddTextBoxText(2, "You: " + ansiInput + "\r\n");
+					// 毎フレーム
+					if (worker && worker->IsFinished() && !resultDisplayed)
+					{
+						std::string ansiResponse;
+						{
+							std::lock_guard<std::mutex> lock(llmResultMutex);
+							ansiResponse = Helper::Utf8ToAnsi(m_llmResult);
+						}
 						window->AddTextBoxText(2, "AI: " + ansiResponse + "\r\n\r\n");
+						resultDisplayed = true;
 					}
 
 

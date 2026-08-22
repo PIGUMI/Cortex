@@ -48,13 +48,21 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 		return "ERROR: WinHttpOpenRequest failed";
 	}
 
+	// 接続を使い回さず、毎回新規接続にする(サーバーがConnection: closeを返すため)
+	DWORD disableKeepAlive = WINHTTP_DISABLE_KEEP_ALIVE;
+	WinHttpSetOption(hRequest, WINHTTP_OPTION_DISABLE_FEATURE, &disableKeepAlive, sizeof(disableKeepAlive));
+
 	std::wstring headers = L"Content-Type: application/json\r\nAuthorization: Bearer ";
 
 	headers += std::wstring(LLAMA_SERVER_API_KEY, LLAMA_SERVER_API_KEY + strlen(LLAMA_SERVER_API_KEY));
 
 	BOOL sent = WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)headers.size(), (LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
+	DWORD sendError = sent ? 0 : GetLastError();
 
-	if (sent && WinHttpReceiveResponse(hRequest, nullptr))
+	BOOL received = sent && WinHttpReceiveResponse(hRequest, nullptr);
+	DWORD receiveError = (sent && !received) ? GetLastError() : 0;
+
+	if (received)
 	{
 		std::string responseBody;
 		DWORD bytesAvailable = 0;
@@ -77,9 +85,13 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 			result = std::string("Error: JSON parse failed - ") + e.what() + " / body=" + responseBody;
 		}
 	}
+	else if (!sent)
+	{
+		result = "Error: WinHttpSendRequest failed, GetLastError=" + std::to_string(sendError);
+	}
 	else
 	{
-		result = "Error: WinHttpSendRequest/ReceiveResponse failed";
+		result = "Error: WinHttpReceiveResponse failed, GetLastError=" + std::to_string(receiveError);
 	}
 
 	WinHttpCloseHandle(hRequest);

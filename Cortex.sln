@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.37301.10 d17.14
+VisualStudioVersion = 17.14.37301.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX12", "DirectX12\DirectX12.vcxproj", "{B7157BAA-E05F-4B67-A40F-4DDC95F518F8}"
 EndProject
@@ -12,6 +12,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LocalLLM", "LocalLLM\LocalLLM.vcxproj", "{51EB3E23-22B9-4679-9DC7-2DDC13272751}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Helper", "Helper\Helper.vcxproj", "{63C13118-4AB6-4F5D-8EB3-6BA4A741C8D8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Thread", "thread\thread.vcxproj", "{A244D6E1-5559-400B-BB8D-35A0188F1323}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +63,14 @@ Global
 		{63C13118-4AB6-4F5D-8EB3-6BA4A741C8D8}.Release|x64.Build.0 = Release|x64
 		{63C13118-4AB6-4F5D-8EB3-6BA4A741C8D8}.Release|x86.ActiveCfg = Release|Win32
 		{63C13118-4AB6-4F5D-8EB3-6BA4A741C8D8}.Release|x86.Build.0 = Release|Win32
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Debug|x64.ActiveCfg = Debug|x64
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Debug|x64.Build.0 = Debug|x64
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Debug|x86.ActiveCfg = Debug|Win32
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Debug|x86.Build.0 = Debug|Win32
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Release|x64.ActiveCfg = Release|x64
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Release|x64.Build.0 = Release|x64
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Release|x86.ActiveCfg = Release|Win32
+		{A244D6E1-5559-400B-BB8D-35A0188F1323}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
