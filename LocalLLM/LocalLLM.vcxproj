@@ -130,9 +130,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BaseLLM.cpp" />
+    <ClCompile Include="llamaServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseLLM.h" />
+    <ClInclude Include="llamaServer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -9,9 +9,15 @@
     <ClCompile Include="BaseLLM.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="llamaServer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseLLM.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="llamaServer.h">
       <Filter>source</Filter>
     </ClInclude>
   </ItemGroup>

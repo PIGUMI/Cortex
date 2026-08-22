@@ -9,6 +9,7 @@
 #include "Window.h"
 #include "DirectX12.h"
 
+
 // Windowsアプリケーションのエントリーポイント
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -94,5 +95,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		directX12->Del();
 		window->DestroyInstance();
 	}
+
 	return 0;
 }
