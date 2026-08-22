@@ -8,6 +8,8 @@
 
 #include "Window.h"
 #include "DirectX12.h"
+#include "Helper.h"
+#include "llamaServer.h"
 
 
 // Windowsアプリケーションのエントリーポイント
@@ -63,7 +65,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 					if (window->IsButtonClicked(4))
 					{
+						std::string ansiInput = window->GetEditText(3);
 
+						std::string utf8Input = Helper::AnsiToUtf8(ansiInput);// UTF-8へ変換
+
+						std::string utf8Response = LocalLLM::CallLlamaServer(utf8Input);
+						std::string ansiResponse = Helper::Utf8ToAnsi(utf8Response);// ANSIへ変換
+
+						window->AddTextBoxText(2, "You: " + ansiInput + "\r\n");
+						window->AddTextBoxText(2, "AI: " + ansiResponse + "\r\n\r\n");
 					}
 
 

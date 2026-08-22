@@ -1,4 +1,4 @@
-#include "llamaServer.h"
+ï»¿#include "llamaServer.h"
 
 #include <Windows.h>
 #include <winhttp.h>
@@ -17,7 +17,10 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 	{
 			{"model", "Qwen3.5-9B-UD-Q6_K_XL"},
 			{"messages", nlohmann::json::array({
-				{{"role", "system"}, {"content", "“ú–{Œê‚Å‰“š‚µ‚Ä‚­‚¾‚³‚¢B"}},
+				// \uã‚¨ã‚¹ã‚±ãƒ¼ãƒ—(ç´ ã®ASCII)ã§æ›¸ãã“ã¨ã§ã€ã‚½ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ«ã®æ–‡å­—ã‚³ãƒ¼ãƒ‰ã«ä¾å­˜ã›ãš
+				// ç¢ºå®Ÿã«UTF-8ãƒã‚¤ãƒˆåˆ—ã‚’å¾—ã‚‹(u8ãƒªãƒ†ãƒ©ãƒ«ã¯Unicodeã‚³ãƒ¼ãƒ‰ãƒã‚¤ãƒ³ãƒˆåŸºæº–ã§å¸¸ã«UTF-8åŒ–ã•ã‚Œã‚‹)
+				{{"role", "system"}, {"content", reinterpret_cast<const char*>(
+					u8"æ—¥æœ¬èªã§å¿œç­”ã—ã¦ãã ã•ã„ã€‚") }},
 				{{"role", "user"}, {"content", utf8UserMessage}}
 			})}
 	};
@@ -25,11 +28,11 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 
 	std::string result;
 
-	// WinHTTPƒZƒbƒVƒ‡ƒ“‚ğŠJ‚­
 	HINTERNET hSession = WinHttpOpen(L"Cortex/1.0",WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
 	if (!hSession)return "ERROR: WinHttpOpen failed";
 
-	// ƒT[ƒo[‚ÉÚ‘±
+	WinHttpSetTimeouts(hSession, 0, 60000, 30000, 120000);
+
 	HINTERNET hConnect = WinHttpConnect(hSession, LLAMA_SERVER_HOST, LLAMA_SERVER_PORT, 0);
 	if (!hConnect)
 	{
@@ -37,7 +40,6 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 		return "ERROR: WinHttpConnect failed";
 	}
 
-	// HTTPƒŠƒNƒGƒXƒg‚ğì¬
 	HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", LLAMA_SERVER_API_PATH, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
 	if (!hRequest)
 	{
@@ -52,7 +54,7 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 
 	BOOL sent = WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)headers.size(), (LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
 
-	if (sent && WinHttpQueryDataAvailable(hRequest, nullptr))
+	if (sent && WinHttpReceiveResponse(hRequest, nullptr))
 	{
 		std::string responseBody;
 		DWORD bytesAvailable = 0;
