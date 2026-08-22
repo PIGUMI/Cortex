@@ -49,6 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Worker* worker = nullptr;
 		bool aiPrefixShown = false;  // "AI: "を表示済みか
 		bool resultDisplayed = true; // 末尾の改行を表示済みか
+		LocalLLM::StreamStats lastStats; // 直近の生成速度(完了後にのみ読む。worker->IsFinished()のatomic同期に相乗りするのでmutex不要)
 
 		/* 基礎ループ */
 		MSG msg = {};
@@ -90,13 +91,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 						aiPrefixShown = false;
 						resultDisplayed = false;
 
-						worker = new Worker([&m_llmResult, &llmResultMutex, utf8Input]()
+						worker = new Worker([&m_llmResult, &llmResultMutex, &lastStats, utf8Input]()
 							{
 								LocalLLM::CallLlamaServerStream(utf8Input, [&m_llmResult, &llmResultMutex](const std::string& delta)
 									{
 										std::lock_guard<std::mutex> lock(llmResultMutex);
 										m_llmResult += delta;
-									});
+									}, &lastStats);
 							});
 					}
 
@@ -125,7 +126,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 						if (worker->IsFinished() && !resultDisplayed)
 						{
-							window->AddTextBoxText(2, "\r\n\r\n");
+							char speedText[64];
+							sprintf_s(speedText, "(%.1f tok/s)", lastStats.tokensPerSecond);
+							window->AddTextBoxText(2, std::string(speedText) + "\r\n\r\n");
 							resultDisplayed = true;
 						}
 					}

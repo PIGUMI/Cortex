@@ -5,6 +5,7 @@
 #include <winhttp.h>
 #include <nlohmann/json.hpp>
 #include <vector>
+#include <chrono>
 #pragma comment(lib, "winhttp.lib")
 
 #define LLAMA_SERVER_HOST L"192.168.0.13"
@@ -17,6 +18,7 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 	nlohmann::json requestBody =
 	{
 			{"model", "Qwen3.5-9B-UD-Q6_K_XL"},
+			{"chat_template_kwargs", {{"enable_thinking", false}}}, // 簡易チャット用に思考過程(reasoning)を無効化
 			{"messages", nlohmann::json::array({
 				// \uエスケープ(素のASCII)で書くことで、ソースファイルの文字コードに依存せず
 				// 確実にUTF-8バイト列を得る(u8リテラルはUnicodeコードポイント基準で常にUTF-8化される)
@@ -103,12 +105,14 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 }
 
 std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
-	std::function<void(const std::string& deltaUtf8)> onDelta)
+	std::function<void(const std::string& deltaUtf8)> onDelta,
+	StreamStats* outStats)
 {
 	nlohmann::json requestBody =
 	{
 			{"model", "Qwen3.5-9B-UD-Q6_K_XL"},
 			{"stream", true},
+			{"chat_template_kwargs", {{"enable_thinking", false}}}, // 簡易チャット用に思考過程(reasoning)を無効化
 			{"messages", nlohmann::json::array({
 				{{"role", "system"}, {"content", reinterpret_cast<const char*>(
 					u8"日本語で応答してください。") }},
@@ -158,6 +162,11 @@ std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
 		std::string pendingUtf8; // 完全なUTF-8文字になるまで保留するバイト列(マルチバイト文字の分割対策)
 		bool done = false;
 
+		size_t tokenCount = 0;
+		std::chrono::steady_clock::time_point firstTokenTime{};
+		std::chrono::steady_clock::time_point lastTokenTime{};
+		bool hasFirstToken = false;
+
 		DWORD bytesAvailable = 0;
 		do
 		{
@@ -186,9 +195,33 @@ std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
 				{
 					nlohmann::json chunk = nlohmann::json::parse(jsonPart);
 					auto& delta = chunk["choices"][0]["delta"];
-					if (delta.contains("content"))
+
+					// reasoning_content(思考過程)もcontent(本回答)と同じ扱いでストリーミングする。
+					// これを無視すると、思考が終わってcontentが出始めるまでの間、画面が
+					// 何も動かないように見えるため(生成が遅いのではなく、見えていないだけ)。
+					std::string deltaText;
+					if (delta.contains("reasoning_content") && delta["reasoning_content"].is_string())
 					{
-						pendingUtf8 += delta["content"].get<std::string>();
+						deltaText += delta["reasoning_content"].get<std::string>();
+					}
+					if (delta.contains("content") && delta["content"].is_string())
+					{
+						deltaText += delta["content"].get<std::string>();
+					}
+
+					if (!deltaText.empty())
+					{
+						// 1チャンク=1トークンとして速度計測(1つ目の到着から最後の到着までの区間で計算)
+						auto now = std::chrono::steady_clock::now();
+						if (!hasFirstToken)
+						{
+							firstTokenTime = now;
+							hasFirstToken = true;
+						}
+						lastTokenTime = now;
+						tokenCount++;
+
+						pendingUtf8 += deltaText;
 
 						size_t incomplete = Helper::InCompleteTailLen(pendingUtf8);
 						size_t ready = pendingUtf8.size() - incomplete;
@@ -204,6 +237,18 @@ std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
 				catch (const std::exception&) { /* 不完全なチャンクはスキップ */ }
 			}
 		} while (bytesAvailable > 0 && !done);
+
+		if (outStats)
+		{
+			outStats->tokenCount = tokenCount;
+			if (tokenCount >= 2) // 1トークンだけだと区間が定義できないので0のままにする
+			{
+				outStats->elapsedSeconds = std::chrono::duration<double>(lastTokenTime - firstTokenTime).count();
+				outStats->tokensPerSecond = (outStats->elapsedSeconds > 0.0)
+					? (double)(tokenCount - 1) / outStats->elapsedSeconds
+					: 0.0;
+			}
+		}
 
 		if (!pendingUtf8.empty()) // 最後まで完成しなかった端数は諦めてそのまま流す
 		{
