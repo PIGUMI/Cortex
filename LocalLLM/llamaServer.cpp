@@ -1,4 +1,5 @@
 ﻿#include "llamaServer.h"
+#include "Helper.h"
 
 #include <Windows.h>
 #include <winhttp.h>
@@ -99,4 +100,130 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 	WinHttpCloseHandle(hSession);
 	return result;
 
+}
+
+std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
+	std::function<void(const std::string& deltaUtf8)> onDelta)
+{
+	nlohmann::json requestBody =
+	{
+			{"model", "Qwen3.5-9B-UD-Q6_K_XL"},
+			{"stream", true},
+			{"messages", nlohmann::json::array({
+				{{"role", "system"}, {"content", reinterpret_cast<const char*>(
+					u8"日本語で応答してください。") }},
+				{{"role", "user"}, {"content", utf8UserMessage}}
+			})}
+	};
+	std::string body = requestBody.dump();
+
+	std::string fullResponse;
+
+	HINTERNET hSession = WinHttpOpen(L"Cortex/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	if (!hSession)return "ERROR: WinHttpOpen failed";
+
+	WinHttpSetTimeouts(hSession, 0, 60000, 30000, 120000);
+
+	HINTERNET hConnect = WinHttpConnect(hSession, LLAMA_SERVER_HOST, LLAMA_SERVER_PORT, 0);
+	if (!hConnect)
+	{
+		WinHttpCloseHandle(hSession);
+		return "ERROR: WinHttpConnect failed";
+	}
+
+	HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", LLAMA_SERVER_API_PATH, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+	if (!hRequest)
+	{
+		WinHttpCloseHandle(hConnect);
+		WinHttpCloseHandle(hSession);
+		return "ERROR: WinHttpOpenRequest failed";
+	}
+
+	// 接続を使い回さず、毎回新規接続にする(サーバーがConnection: closeを返すため)
+	DWORD disableKeepAlive = WINHTTP_DISABLE_KEEP_ALIVE;
+	WinHttpSetOption(hRequest, WINHTTP_OPTION_DISABLE_FEATURE, &disableKeepAlive, sizeof(disableKeepAlive));
+
+	std::wstring headers = L"Content-Type: application/json\r\nAuthorization: Bearer ";
+	headers += std::wstring(LLAMA_SERVER_API_KEY, LLAMA_SERVER_API_KEY + strlen(LLAMA_SERVER_API_KEY));
+
+	BOOL sent = WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)headers.size(), (LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
+	DWORD sendError = sent ? 0 : GetLastError();
+
+	BOOL received = sent && WinHttpReceiveResponse(hRequest, nullptr);
+	DWORD receiveError = (sent && !received) ? GetLastError() : 0;
+
+	if (received)
+	{
+		std::string sseBuffer;   // 受信したがまだ行として処理していない生バイト列
+		std::string pendingUtf8; // 完全なUTF-8文字になるまで保留するバイト列(マルチバイト文字の分割対策)
+		bool done = false;
+
+		DWORD bytesAvailable = 0;
+		do
+		{
+			if (!WinHttpQueryDataAvailable(hRequest, &bytesAvailable) || bytesAvailable == 0)break;
+			std::vector<char> buf(bytesAvailable);
+			DWORD bytesRead = 0;
+			if (!WinHttpReadData(hRequest, buf.data(), bytesAvailable, &bytesRead))break;
+
+			sseBuffer.append(buf.data(), bytesRead);
+
+			size_t pos;
+			while (!done && (pos = sseBuffer.find('\n')) != std::string::npos)
+			{
+				std::string line = sseBuffer.substr(0, pos);
+				sseBuffer.erase(0, pos + 1);
+				if (!line.empty() && line.back() == '\r')line.pop_back();
+
+				const std::string prefix = "data: ";
+				if (line.rfind(prefix, 0) != 0)continue; // "data: "で始まらない行(空行等)は無視
+
+				std::string jsonPart = line.substr(prefix.size());
+				if (jsonPart == "[DONE]") { done = true; break; }
+				if (jsonPart.empty())continue;
+
+				try
+				{
+					nlohmann::json chunk = nlohmann::json::parse(jsonPart);
+					auto& delta = chunk["choices"][0]["delta"];
+					if (delta.contains("content"))
+					{
+						pendingUtf8 += delta["content"].get<std::string>();
+
+						size_t incomplete = Helper::InCompleteTailLen(pendingUtf8);
+						size_t ready = pendingUtf8.size() - incomplete;
+						if (ready > 0)
+						{
+							std::string readyText = pendingUtf8.substr(0, ready);
+							fullResponse += readyText;
+							if (onDelta)onDelta(readyText);
+							pendingUtf8.erase(0, ready);
+						}
+					}
+				}
+				catch (const std::exception&) { /* 不完全なチャンクはスキップ */ }
+			}
+		} while (bytesAvailable > 0 && !done);
+
+		if (!pendingUtf8.empty()) // 最後まで完成しなかった端数は諦めてそのまま流す
+		{
+			fullResponse += pendingUtf8;
+			if (onDelta)onDelta(pendingUtf8);
+		}
+	}
+	else if (!sent)
+	{
+		fullResponse = "Error: WinHttpSendRequest failed, GetLastError=" + std::to_string(sendError);
+		if (onDelta)onDelta(fullResponse);
+	}
+	else
+	{
+		fullResponse = "Error: WinHttpReceiveResponse failed, GetLastError=" + std::to_string(receiveError);
+		if (onDelta)onDelta(fullResponse);
+	}
+
+	WinHttpCloseHandle(hRequest);
+	WinHttpCloseHandle(hConnect);
+	WinHttpCloseHandle(hSession);
+	return fullResponse;
 }

@@ -45,8 +45,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		std::mutex llmResultMutex;
 		std::string m_llmResult = "";
+		size_t displayedLength = 0; // m_llmResultのうち、既に画面に表示済みのバイト数
 		Worker* worker = nullptr;
-		bool resultDisplayed = true; // まだ表示していない結果があるかどうか
+		bool aiPrefixShown = false;  // "AI: "を表示済みか
+		bool resultDisplayed = true; // 末尾の改行を表示済みか
 
 		/* 基礎ループ */
 		MSG msg = {};
@@ -80,26 +82,52 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 						std::string utf8Input = Helper::AnsiToUtf8(ansiInput);
 						window->SetBoxText(3, ""); // 入力欄をクリア
 
+						{
+							std::lock_guard<std::mutex> lock(llmResultMutex);
+							m_llmResult.clear();
+						}
+						displayedLength = 0;
+						aiPrefixShown = false;
 						resultDisplayed = false;
+
 						worker = new Worker([&m_llmResult, &llmResultMutex, utf8Input]()
 							{
-								std::string response = LocalLLM::CallLlamaServer(utf8Input);
-
-								std::lock_guard<std::mutex> lock(llmResultMutex);
-								m_llmResult = response;
+								LocalLLM::CallLlamaServerStream(utf8Input, [&m_llmResult, &llmResultMutex](const std::string& delta)
+									{
+										std::lock_guard<std::mutex> lock(llmResultMutex);
+										m_llmResult += delta;
+									});
 							});
 					}
 
-					// 毎フレーム
-					if (worker && worker->IsFinished() && !resultDisplayed)
+					// 毎フレーム: 前回チェック時から新しく届いた分だけ切り出して表示する
+					if (worker)
 					{
-						std::string ansiResponse;
+						std::string newUtf8;
 						{
 							std::lock_guard<std::mutex> lock(llmResultMutex);
-							ansiResponse = Helper::Utf8ToAnsi(m_llmResult);
+							if (m_llmResult.size() > displayedLength)
+							{
+								newUtf8 = m_llmResult.substr(displayedLength);
+								displayedLength = m_llmResult.size();
+							}
 						}
-						window->AddTextBoxText(2, "AI: " + ansiResponse + "\r\n\r\n");
-						resultDisplayed = true;
+
+						if (!newUtf8.empty())
+						{
+							if (!aiPrefixShown)
+							{
+								window->AddTextBoxText(2, "AI: ");
+								aiPrefixShown = true;
+							}
+							window->AddTextBoxText(2, Helper::Utf8ToAnsi(newUtf8));
+						}
+
+						if (worker->IsFinished() && !resultDisplayed)
+						{
+							window->AddTextBoxText(2, "\r\n\r\n");
+							resultDisplayed = true;
+						}
 					}
 
 
