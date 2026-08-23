@@ -14,8 +14,7 @@
 #include <mutex>
 
 
-// Windowsアプリケーションのエントリーポイント
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 {
 	Window* window = Window::GetInstance();
 	DirectX::DirectX12* directX12 = DirectX::DirectX12::Get();
@@ -76,7 +75,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 					if (window->IsButtonClicked(4) && (worker == nullptr || worker->IsFinished()))
 					{
 						window->AddTextBoxText(2, "You: " + window->GetEditText(3) + "\r\n\r\n");
-				
+
 						delete worker; // 前回分の後始末(joinable済みなのですぐ壊せる)
 
 						std::string ansiInput = window->GetEditText(3);
