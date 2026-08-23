@@ -157,7 +157,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Template.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
