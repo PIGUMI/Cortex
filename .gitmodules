@@ -1,3 +1,6 @@
 [submodule "LocalLLM/llama.cpp"]
 	path = LocalLLM/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "Curl/curl"]
+	path = Curl/curl
+	url = https://github.com/curl/curl.git
