@@ -104,9 +104,7 @@ std::string LocalLLM::CallLlamaServer(const std::string& utf8UserMessage)
 
 }
 
-std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,
-	std::function<void(const std::string& deltaUtf8)> onDelta,
-	StreamStats* outStats)
+std::string LocalLLM::CallLlamaServerStream(const std::string& utf8UserMessage,std::function<void(const std::string& deltaUtf8)> onDelta,StreamStats* outStats)
 {
 	nlohmann::json requestBody =
 	{
