@@ -1,8 +1,47 @@
 ﻿#include "Window.h"
 using namespace std;
 #include <Windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
+#include <dwmapi.h>
+#include <uxtheme.h>
 #include <set>
+#pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "uxtheme.lib")
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+#ifndef DWMWCP_ROUND
+#define DWMWCP_ROUND 2
+#endif
+#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+#define DWMWA_SYSTEMBACKDROP_TYPE 38
+#endif
+#ifndef DWMSBT_MAINWINDOW
+#define DWMSBT_MAINWINDOW 2
+#endif
+
+namespace {
+	// レジストリのAppsUseLightThemeを見てOSがダークテーマかどうか判定
+	bool IsSystemInDarkMode()
+	{
+		HKEY hKey;
+		if (RegOpenKeyExA(HKEY_CURRENT_USER,
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+			0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+			return false;
+		}
+		DWORD value = 1;
+		DWORD size = sizeof(value);
+		LONG result = RegQueryValueExA(hKey, "AppsUseLightTheme", nullptr, nullptr, (LPBYTE)&value, &size);
+		RegCloseKey(hKey);
+		return result == ERROR_SUCCESS && value == 0;
+	}
+}
 
 //extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -17,7 +56,42 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		int id = LOWORD(wParam);
 		int code = HIWORD(wParam);
 		if (code == BN_CLICKED) {
-			Window::GetInstance()->SetButtonClicked(id);
+			switch (id) {
+			case ID_TITLEBAR_MIN:
+				ShowWindow(hWnd, SW_MINIMIZE);
+				return 0;
+			case ID_TITLEBAR_MAXRESTORE:
+				ShowWindow(hWnd, IsZoomed(hWnd) ? SW_RESTORE : SW_MAXIMIZE);
+				return 0;
+			case ID_TITLEBAR_CLOSE:
+				PostMessage(hWnd, WM_CLOSE, 0, 0);
+				return 0;
+			case ID_TITLEBAR_FILE:
+			case ID_TITLEBAR_EDIT:
+				Window::GetInstance()->ShowTitleBarMenu(id);
+				return 0;
+			default:
+				Window::GetInstance()->SetButtonClicked(id);
+			}
+		}
+		else if (code == EN_KILLFOCUS) {
+			Window::GetInstance()->ShowRichEditPlaceholder(id);
+		}
+		else if (code == EN_SETFOCUS) {
+			Window::GetInstance()->HideRichEditPlaceholder(id);
+		}
+		break;
+	}
+	case WM_DRAWITEM:
+	{
+		LPDRAWITEMSTRUCT di = (LPDRAWITEMSTRUCT)lParam;
+		if (di->CtlType == ODT_BUTTON) {
+			Window::GetInstance()->DrawFlatButton(di);
+			return TRUE;
+		}
+		if (di->CtlType == ODT_TAB) {
+			Window::GetInstance()->DrawTabItem(di);
+			return TRUE;
 		}
 		break;
 	}
@@ -31,12 +105,93 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	}
+	case WM_CTLCOLORSTATIC:
+	case WM_CTLCOLOREDIT:
+	case WM_CTLCOLORLISTBOX:
+	{
+		int id = GetDlgCtrlID((HWND)lParam);
+		HBRUSH hBrush = Window::GetInstance()->HandleCtlColor(id, (HDC)wParam);
+		if (hBrush) return (LRESULT)hBrush;
+		break;
+	}
+	// 自作タイトルバーにする都合上、OSに「タイトルバー＋枠の分だけ内側にクライアント領域を作る」
+	// 処理をさせないようにする。TRUEのときに何もせず0を返すと、ウインドウ全体がクライアント領域になる。
+	case WM_NCCALCSIZE:
+	{
+		if (wParam == TRUE && hWnd == Window::GetInstance()->GetMainWindowHandle()) {
+			NCCALCSIZE_PARAMS* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+			WINDOWPLACEMENT wp{};
+			wp.length = sizeof(wp);
+			GetWindowPlacement(hWnd, &wp);
+			if (wp.showCmd == SW_SHOWMAXIMIZED) {
+				// 最大化時はモニタの作業領域からはみ出さないよう、見えない枠の分だけ内側に詰める
+				int frameX = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+				int frameY = GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+				params->rgrc[0].left += frameX;
+				params->rgrc[0].top += frameY;
+				params->rgrc[0].right -= frameX;
+				params->rgrc[0].bottom -= frameY;
+			}
+			return 0;
+		}
+		break;
+	}
+	// タイトルバーの見た目を消した分、「上端をつかんでドラッグ移動」「端をつかんでリサイズ」
+	// という当たり判定をここで自前判定して復元する。
+	case WM_NCHITTEST:
+	{
+		if (hWnd != Window::GetInstance()->GetMainWindowHandle()) break;
+
+		POINT ptScreen = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		RECT rcWindow;
+		GetWindowRect(hWnd, &rcWindow);
+
+		const int resizeBorder = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+		if (!IsZoomed(hWnd)) {
+			bool onLeft = ptScreen.x < rcWindow.left + resizeBorder;
+			bool onRight = ptScreen.x >= rcWindow.right - resizeBorder;
+			bool onTop = ptScreen.y < rcWindow.top + resizeBorder;
+			bool onBottom = ptScreen.y >= rcWindow.bottom - resizeBorder;
+
+			if (onTop && onLeft) return HTTOPLEFT;
+			if (onTop && onRight) return HTTOPRIGHT;
+			if (onBottom && onLeft) return HTBOTTOMLEFT;
+			if (onBottom && onRight) return HTBOTTOMRIGHT;
+			if (onLeft) return HTLEFT;
+			if (onRight) return HTRIGHT;
+			if (onTop) return HTTOP;
+			if (onBottom) return HTBOTTOM;
+		}
+
+		POINT ptClient = ptScreen;
+		ScreenToClient(hWnd, &ptClient);
+		if (ptClient.y >= 0 && ptClient.y < Window::GetInstance()->GetTitleBarHeight()) {
+			HWND hChild = ChildWindowFromPointEx(hWnd, ptClient, CWP_SKIPINVISIBLE | CWP_SKIPDISABLED | CWP_SKIPTRANSPARENT);
+			if (hChild != nullptr && hChild != hWnd) {
+				return HTCLIENT; // 自作タイトルバー上のボタンは通常のクリックとして扱う
+			}
+			return HTCAPTION; // ボタン以外の帯部分はドラッグ移動 + ダブルクリックで最大化
+		}
+
+		return HTCLIENT;
+	}
+	// タイトルバーを消したことでOSが行う非クライアント領域の再描画(ちらつきの原因)を抑止する
+	case WM_NCACTIVATE:
+		if (hWnd == Window::GetInstance()->GetMainWindowHandle()) {
+			return DefWindowProc(hWnd, message, wParam, -1);
+		}
+		break;
 	case WM_SIZE:
 		if (wParam != SIZE_MINIMIZED)
 		{
 			UINT w = LOWORD(lParam);
 			UINT h = HIWORD(lParam);
 			//DirectX::DirectX12::Get()->RequestResize(w, h);
+			if (hWnd == Window::GetInstance()->GetMainWindowHandle()) {
+				Window::GetInstance()->LayoutTitleBarButtons();
+				Window::GetInstance()->ApplyProportionalLayout();
+				Window::GetInstance()->NotifyResize((int)w, (int)h);
+			}
 		}
 		return 0;
 	case WM_DESTROY:
@@ -92,6 +247,12 @@ void Window::DestroyInstance()
 		if (m_instance->m_hWnd) {
 			DestroyWindow(m_instance->m_hWnd);
 		}
+		if (m_instance->m_defaultFont) {
+			DeleteObject(m_instance->m_defaultFont);
+		}
+		for (auto& pair : m_instance->m_controlColors) {
+			if (pair.second.backgroundBrush) DeleteObject(pair.second.backgroundBrush);
+		}
 		CoUninitialize();
 		// インスタンスを破棄
 		delete m_instance;
@@ -121,20 +282,275 @@ bool Window::Initialize(HINSTANCE hInstance, int nCmdShow)
 		MessageBox(nullptr, "ウインドウの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return false;
 	}
+	ApplyModernWindowStyle(m_hWnd);
+	CreateTitleBar();
 	ShowWindow(m_hWnd, nCmdShow);
 	UpdateWindow(m_hWnd);
 	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	return true;
 }
 
-HWND Window::CreateButton(int id, const string& text, int x, int y, int width, int height, HWND hwnd)
+void Window::ApplyModernWindowStyle(HWND hwnd)
+{
+	// タイトルバーをOSのダーク/ライト設定に合わせる
+	BOOL useDarkMode = IsSystemInDarkMode() ? TRUE : FALSE;
+	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
+
+	// Windows 11: Micaの背景素材 + ウインドウの角丸
+	DWORD backdrop = DWMSBT_MAINWINDOW;
+	DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(backdrop));
+
+	DWORD cornerPreference = DWMWCP_ROUND;
+	DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+
+	// 未対応OS(Windows 10以前)ではDwmSetWindowAttributeが静かに失敗するだけなので、
+	// エラーチェックは行わずベストエフォートで適用する。
+
+	// タイトルバーを自前描画にする(WM_NCCALCSIZEで非クライアント領域を0にする)と、
+	// 何もしないとDWMの影が付かなくなる。下端を1pxだけ非クライアント扱いにする定石で影を復元する。
+	MARGINS margins = { 0, 0, 0, 1 };
+	DwmExtendFrameIntoClientArea(hwnd, &margins);
+}
+
+void Window::CreateTitleBar()
+{
+	UINT dpi = GetDpiForWindow(m_hWnd);
+	m_titleBarHeight = MulDiv(36, (int)dpi, 96);
+	int menuButtonWidth = MulDiv(60, (int)dpi, 96);
+	int margin = MulDiv(4, (int)dpi, 96);
+
+	CreateButton(ID_TITLEBAR_FILE, "ファイル", margin, margin, menuButtonWidth, m_titleBarHeight - margin * 2,nullptr,true);
+	CreateButton(ID_TITLEBAR_EDIT, "編集", margin + menuButtonWidth, margin, menuButtonWidth, m_titleBarHeight - margin * 2,nullptr,true);
+
+	CreateButton(ID_TITLEBAR_MIN, "－", 0, 0, 1, 1,nullptr,true);
+	CreateButton(ID_TITLEBAR_MAXRESTORE, "□", 0, 0, 1, 1,nullptr,true);
+	CreateButton(ID_TITLEBAR_CLOSE, "×", 0, 0, 1, 1,nullptr,true);
+
+	LayoutTitleBarButtons();
+}
+
+void Window::LayoutTitleBarButtons()
+{
+	HWND hMin = GetChildWindowHandle(ID_TITLEBAR_MIN);
+	HWND hMaxRestore = GetChildWindowHandle(ID_TITLEBAR_MAXRESTORE);
+	HWND hClose = GetChildWindowHandle(ID_TITLEBAR_CLOSE);
+	if (!hMin || !hMaxRestore || !hClose) return;
+
+	UINT dpi = GetDpiForWindow(m_hWnd);
+	int buttonWidth = MulDiv(46, (int)dpi, 96);
+	int clientWidth = GetClientWidth();
+
+	int x = clientWidth - buttonWidth;
+	SetWindowPos(hClose, nullptr, x, 0, buttonWidth, m_titleBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	x -= buttonWidth;
+	SetWindowPos(hMaxRestore, nullptr, x, 0, buttonWidth, m_titleBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	x -= buttonWidth;
+	SetWindowPos(hMin, nullptr, x, 0, buttonWidth, m_titleBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void Window::ShowTitleBarMenu(int buttonId)
+{
+	HWND hButton = GetChildWindowHandle(buttonId);
+	if (!hButton) return;
+
+	HMENU hMenu = CreatePopupMenu();
+	if (buttonId == ID_TITLEBAR_FILE) {
+		AppendMenuA(hMenu, MF_STRING, 1, "新規");
+		AppendMenuA(hMenu, MF_STRING, 2, "開く");
+		AppendMenuA(hMenu, MF_SEPARATOR, 0, nullptr);
+		AppendMenuA(hMenu, MF_STRING, 3, "終了");
+	} else {
+		AppendMenuA(hMenu, MF_STRING, 1, "元に戻す");
+		AppendMenuA(hMenu, MF_STRING, 2, "切り取り");
+		AppendMenuA(hMenu, MF_STRING, 3, "コピー");
+		AppendMenuA(hMenu, MF_STRING, 4, "貼り付け");
+	}
+
+	RECT rc;
+	GetWindowRect(hButton, &rc);
+	TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN, rc.left, rc.bottom, m_hWnd, nullptr);
+	DestroyMenu(hMenu);
+}
+
+void Window::DrawFlatButton(LPDRAWITEMSTRUCT di)
+{
+	bool pressed = (di->itemState & ODS_SELECTED) != 0;
+
+	COLORREF bgColor = pressed ? RGB(225, 225, 225) : RGB(255, 255, 255);
+	COLORREF textColor = RGB(32, 32, 32);
+
+	auto it = m_controlColors.find((int)di->CtlID);
+	if (it != m_controlColors.end()) {
+		textColor = it->second.textColor;
+		if (pressed) {
+			int r = max(0, GetRValue(it->second.backgroundColor) - 24);
+			int g = max(0, GetGValue(it->second.backgroundColor) - 24);
+			int b = max(0, GetBValue(it->second.backgroundColor) - 24);
+			bgColor = RGB(r, g, b);
+		}
+		else {
+			bgColor = it->second.backgroundColor;
+		}
+	}
+
+	HBRUSH hBrush = CreateSolidBrush(bgColor);
+	FillRect(di->hDC, &di->rcItem, hBrush);
+	DeleteObject(hBrush);
+
+	char text[256] = {};
+	GetWindowTextA(di->hwndItem, text, sizeof(text));
+
+	SetBkMode(di->hDC, TRANSPARENT);
+	SetTextColor(di->hDC, textColor);
+	SelectObject(di->hDC, GetDefaultFont());
+	DrawTextA(di->hDC, text, -1, &di->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
+void Window::SetControlColor(int id, COLORREF textColor, COLORREF backgroundColor)
+{
+	ControlColor& entry = m_controlColors[id];
+	if (entry.backgroundBrush) {
+		DeleteObject(entry.backgroundBrush);
+	}
+	entry.textColor = textColor;
+	entry.backgroundColor = backgroundColor;
+	entry.backgroundBrush = CreateSolidBrush(backgroundColor);
+
+	HWND hControl = GetChildWindowHandle(id);
+	if (hControl) {
+		InvalidateRect(hControl, nullptr, TRUE);
+	}
+}
+
+HBRUSH Window::HandleCtlColor(int id, HDC hdc)
+{
+	auto it = m_controlColors.find(id);
+	if (it == m_controlColors.end()) return nullptr;
+
+	SetTextColor(hdc, it->second.textColor);
+	SetBkColor(hdc, it->second.backgroundColor);
+	return it->second.backgroundBrush;
+}
+
+void Window::DrawTabItem(LPDRAWITEMSTRUCT di)
+{
+	int id = (int)di->CtlID;
+	auto it = m_controlColors.find(id);
+	COLORREF bgColor = (it != m_controlColors.end()) ? it->second.backgroundColor : RGB(240, 240, 240);
+	COLORREF textColor = (it != m_controlColors.end()) ? it->second.textColor : RGB(0, 0, 0);
+
+	HBRUSH hBrush = CreateSolidBrush(bgColor);
+	FillRect(di->hDC, &di->rcItem, hBrush);
+	DeleteObject(hBrush);
+
+	bool selected = (di->itemState & ODS_SELECTED) != 0;
+	if (selected) {
+		HPEN hPen = CreatePen(PS_SOLID, 2, textColor);
+		HGDIOBJ old = SelectObject(di->hDC, hPen);
+		MoveToEx(di->hDC, di->rcItem.left, di->rcItem.bottom - 1, nullptr);
+		LineTo(di->hDC, di->rcItem.right, di->rcItem.bottom - 1);
+		SelectObject(di->hDC, old);
+		DeleteObject(hPen);
+	}
+
+	char text[256] = {};
+	TCITEMA tci = {};
+	tci.mask = TCIF_TEXT;
+	tci.pszText = text;
+	tci.cchTextMax = sizeof(text);
+	SendMessageA(di->hwndItem, TCM_GETITEMA, di->itemID, (LPARAM)&tci);
+
+	SetBkMode(di->hDC, TRANSPARENT);
+	SetTextColor(di->hDC, textColor);
+	SelectObject(di->hDC, GetDefaultFont());
+	DrawTextA(di->hDC, text, -1, &di->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
+void Window::RegisterControlLayout(int id, HWND hControl)
+{
+	if (!hControl) return;
+	if (id >= ID_TITLEBAR_FILE && id <= ID_TITLEBAR_CLOSE) return; // タイトルバーのボタンは専用のLayoutTitleBarButtonsで管理するため対象外
+
+	HWND hParent = GetParent(hControl);
+	if (!hParent) return;
+
+	RECT rcParent;
+	GetClientRect(hParent, &rcParent);
+	double parentWidth = (double)(rcParent.right - rcParent.left);
+	double parentHeight = (double)(rcParent.bottom - rcParent.top);
+	if (parentWidth <= 0 || parentHeight <= 0) return;
+
+	RECT rcControl;
+	GetWindowRect(hControl, &rcControl);
+	POINT topLeft = { rcControl.left, rcControl.top };
+	POINT bottomRight = { rcControl.right, rcControl.bottom };
+	ScreenToClient(hParent, &topLeft);
+	ScreenToClient(hParent, &bottomRight);
+
+	ControlLayout layout{};
+	layout.id = id;
+	layout.fracX = topLeft.x / parentWidth;
+	layout.fracY = topLeft.y / parentHeight;
+	layout.fracWidth = (bottomRight.x - topLeft.x) / parentWidth;
+	layout.fracHeight = (bottomRight.y - topLeft.y) / parentHeight;
+	m_controlLayouts.push_back(layout);
+}
+
+void Window::ApplyProportionalLayout()
+{
+	for (const auto& layout : m_controlLayouts) {
+		HWND hControl = GetChildWindowHandle(layout.id);
+		if (!hControl) continue;
+		HWND hParent = GetParent(hControl);
+		if (!hParent) continue;
+
+		RECT rcParent;
+		GetClientRect(hParent, &rcParent);
+		int parentWidth = rcParent.right - rcParent.left;
+		int parentHeight = rcParent.bottom - rcParent.top;
+
+		int x = (int)(layout.fracX * parentWidth);
+		int y = (int)(layout.fracY * parentHeight);
+		int width = (int)(layout.fracWidth * parentWidth);
+		int height = (int)(layout.fracHeight * parentHeight);
+
+		SetWindowPos(hControl, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+
+		char className[64] = {};
+		GetClassNameA(hControl, className, sizeof(className));
+		if (strcmp(className, WC_TABCONTROL) == 0) {
+			AutoSizeTabItems(layout.id);
+		}
+	}
+}
+
+HFONT Window::GetDefaultFont()
+{
+	if (m_defaultFont != nullptr) return m_defaultFont;
+
+	UINT dpi = m_hWnd ? GetDpiForWindow(m_hWnd) : 96;
+	int pointSize = 9;
+	int fontHeight = -MulDiv(pointSize, (int)dpi, 72);
+
+	m_defaultFont = CreateFontA(
+		fontHeight, 0, 0, 0,
+		FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+		"Segoe UI"
+	);
+	return m_defaultFont;
+}
+
+HWND Window::CreateButton(int id, const string& text, int x, int y, int width, int height, HWND hwnd,bool flat)
 {
 	if (hwnd == nullptr) hwnd = m_hWnd;
+	DWORD buttonStyle = WS_CHILD | WS_VISIBLE | (flat ? BS_OWNERDRAW : BS_PUSHBUTTON);
 	HWND hButton = CreateWindowEx(
 		0,
 		"BUTTON",
 		text.c_str(),
-		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+		buttonStyle,
 		x, y, width, height,
 		hwnd,
 		(HMENU)(intptr_t)id,
@@ -145,7 +561,9 @@ HWND Window::CreateButton(int id, const string& text, int x, int y, int width, i
 		MessageBox(nullptr, "ボタンの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hButton, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	m_childWindows[id] = hButton;
+	RegisterControlLayout(id, hButton);
 	ShowWindow(hButton, SW_SHOW);
 	UpdateWindow(hButton);
 	return hButton;
@@ -168,7 +586,9 @@ HWND Window::CreateEdit(int id, const string& text, int x, int y, int width, int
 		MessageBox(nullptr, "編集ボックスの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hEdit, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	m_childWindows[id] = hEdit;
+	RegisterControlLayout(id, hEdit);
 	ShowWindow(hEdit, SW_SHOW);
 	UpdateWindow(hEdit);
 	return hEdit;
@@ -192,7 +612,9 @@ HWND Window::CreateTextBox(int id, const string& text, int x, int y, int width, 
 		MessageBox(nullptr, "テキストボックスの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hTextBox, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	m_childWindows[id] = hTextBox;
+	RegisterControlLayout(id, hTextBox);
 	ShowWindow(hTextBox, SW_SHOW);
 	UpdateWindow(hTextBox);
 	return hTextBox;
@@ -235,10 +657,12 @@ HWND Window::CreateListBox(int id, const vector<string>& items, int x, int y, in
 		MessageBox(nullptr, "リストボックスの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hListBox, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	for (const auto& item : items) {
 		SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)item.c_str());
 	}
 	m_childWindows[id] = hListBox;
+	RegisterControlLayout(id, hListBox);
 	ShowWindow(hListBox, SW_SHOW);
 	UpdateWindow(hListBox);
 	return hListBox;
@@ -282,10 +706,12 @@ HWND Window::CreateComboBox(int id, const vector<string>& items, int x, int y, i
 		MessageBox(nullptr, "コンボボックスの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hComboBox, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	for (const auto& item : items) {
 		SendMessage(hComboBox, CB_ADDSTRING, 0, (LPARAM)item.c_str());
 	}
 	m_childWindows[id] = hComboBox;
+	RegisterControlLayout(id, hComboBox);
 	ShowWindow(hComboBox, SW_SHOW);
 	UpdateWindow(hComboBox);
 	return hComboBox;
@@ -331,6 +757,7 @@ HWND Window::CreateScrollBar(int id, int x, int y, int width, int height, bool i
 		return nullptr;
 	}
 	m_childWindows[id] = hScrollBar;
+	RegisterControlLayout(id, hScrollBar);
 	ShowWindow(hScrollBar, SW_SHOW);
 	UpdateWindow(hScrollBar);
 	return hScrollBar;
@@ -361,10 +788,58 @@ HWND Window::CreateRichEdit(int id, const string& text, int x, int y, int width,
 		MessageBox(nullptr, "リッチエディタの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hRichEdit, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	m_childWindows[id] = hRichEdit;
+	RegisterControlLayout(id, hRichEdit);
 	ShowWindow(hRichEdit, SW_SHOW);
 	UpdateWindow(hRichEdit);
 	return hRichEdit;
+}
+
+void Window::SetRichEditPlaceholder(int id, const string& placeholder)
+{
+	m_placeholders[id] = placeholder;
+	ShowRichEditPlaceholder(id);
+}
+
+void Window::ShowRichEditPlaceholder(int id)
+{
+	HWND hRichEdit = GetChildWindowHandle(id);
+	auto it = m_placeholders.find(id);
+	if (!hRichEdit || it == m_placeholders.end()) return;
+
+	int len = GetWindowTextLengthA(hRichEdit);
+	if (len > 0) return; // 既に何か入力されている場合は上書きしない
+
+	SetWindowTextA(hRichEdit, it->second.c_str());
+
+	CHARFORMATA cf = {};
+	cf.cbSize = sizeof(cf);
+	cf.dwMask = CFM_COLOR;
+	cf.crTextColor = RGB(160, 160, 160); // プレースホルダーらしい薄いグレー
+	SendMessage(hRichEdit, EM_SETSEL, 0, -1);
+	SendMessage(hRichEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+	SendMessage(hRichEdit, EM_SETSEL, 0, 0);
+}
+
+void Window::HideRichEditPlaceholder(int id)
+{
+	HWND hRichEdit = GetChildWindowHandle(id);
+	auto it = m_placeholders.find(id);
+	if (!hRichEdit || it == m_placeholders.end()) return;
+
+	char buf[1024] = {};
+	GetWindowTextA(hRichEdit, buf, sizeof(buf));
+	if (it->second != buf) return; // プレースホルダー表示中でなければ何もしない
+
+	SetWindowTextA(hRichEdit, "");
+
+	CHARFORMATA cf = {};
+	cf.cbSize = sizeof(cf);
+	cf.dwMask = CFM_COLOR;
+	cf.crTextColor = RGB(0, 0, 0); // 通常の文字色に戻す(以降のタイプもこの色になる)
+	SendMessage(hRichEdit, EM_SETSEL, 0, -1);
+	SendMessage(hRichEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
 }
 
 HWND Window::CreateListView(int id, int x, int y, int width, int height, DWORD style)
@@ -387,8 +862,10 @@ HWND Window::CreateListView(int id, int x, int y, int width, int height, DWORD s
 		MessageBox(m_hWnd, "リストビュー作成失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hListView, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 
 	m_childWindows[id] = hListView;
+	RegisterControlLayout(id, hListView);
 	ShowWindow(hListView, SW_SHOW);
 	UpdateWindow(hListView);
 	return hListView;
@@ -468,8 +945,10 @@ HWND Window::CreateTreeView(int id, int x, int y, int width, int height)
 		MessageBox(m_hWnd, "ツリービュー作成失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hTreeView, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 
 	m_childWindows[id] = hTreeView;
+	RegisterControlLayout(id, hTreeView);
 	ShowWindow(hTreeView, SW_SHOW);
 	UpdateWindow(hTreeView);
 	return hTreeView;
@@ -510,7 +989,7 @@ HWND Window::CreateTabControl(int id, int x, int y, int width, int height)
 		0,
 		WC_TABCONTROL, // "SysTabControl32"
 		"",
-		WS_CHILD | WS_VISIBLE | WS_BORDER,
+		WS_CHILD | WS_VISIBLE | WS_BORDER | TCS_FIXEDWIDTH | TCS_OWNERDRAWFIXED,
 		x, y, width, height,
 		m_hWnd,
 		(HMENU)(intptr_t)id,
@@ -521,8 +1000,10 @@ HWND Window::CreateTabControl(int id, int x, int y, int width, int height)
 		MessageBox(m_hWnd, "タブコントロール作成失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hTab, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 
 	m_childWindows[id] = hTab;
+	RegisterControlLayout(id, hTab);
 	ShowWindow(hTab, SW_SHOW);
 	UpdateWindow(hTab);
 	return hTab;
@@ -540,6 +1021,7 @@ void Window::AddTabItem(int Id, const string& text)
 	tci.pszText = (LPSTR)text.c_str();
 	int count = (int)SendMessage(hTab, TCM_GETITEMCOUNT, 0, 0);
 	SendMessageA(hTab, TCM_INSERTITEMA, count, (LPARAM)&tci);
+	AutoSizeTabItems(Id);
 }
 
 HWND Window::CreateTrackBar(int id, int x, int y, int width, int height, int min, int max, int pos, bool vertical)
@@ -570,6 +1052,7 @@ HWND Window::CreateTrackBar(int id, int x, int y, int width, int height, int min
 	SendMessage(hTrack, TBM_SETPOS, TRUE, pos);
 
 	m_childWindows[id] = hTrack;
+	RegisterControlLayout(id, hTrack);
 	ShowWindow(hTrack, SW_SHOW);
 	UpdateWindow(hTrack);
 	return hTrack;
@@ -600,6 +1083,7 @@ HWND Window::CreateProgressBar(int id, int x, int y, int width, int height, int 
 	SendMessage(hProg, PBM_SETPOS, pos, 0);
 
 	m_childWindows[id] = hProg;
+	RegisterControlLayout(id, hProg);
 	ShowWindow(hProg, SW_SHOW);
 	UpdateWindow(hProg);
 	return hProg;
@@ -622,7 +1106,9 @@ HWND Window::CreateText(int id, const string& text, int x, int y, int width, int
 		MessageBox(nullptr, "テキストの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return nullptr;
 	}
+	SendMessage(hStatic, WM_SETFONT, (WPARAM)GetDefaultFont(), TRUE);
 	m_childWindows[id] = hStatic;
+	RegisterControlLayout(id, hStatic);
 	ShowWindow(hStatic, SW_SHOW);
 	UpdateWindow(hStatic);
 	return hStatic;
@@ -646,6 +1132,7 @@ HWND Window::CreateSubWindow(int id, const string& title, int x, int y, int widt
 		return nullptr;
 	}
 	m_childWindows[id] = hSubWnd;
+	RegisterControlLayout(id, hSubWnd);
 	ShowWindow(hSubWnd, SW_SHOW);
 	UpdateWindow(hSubWnd);
 	return hSubWnd;
@@ -953,4 +1440,25 @@ HWND Window::GetChildWindowHandle(int id)
 		return it->second;
 	}
 	return nullptr;
+}
+
+void Window::AutoSizeTabItems(int id)
+{
+	HWND hTab = GetChildWindowHandle(id);
+	if (!hTab) return;
+
+	int itemCount = (int)SendMessage(hTab, TCM_GETITEMCOUNT, 0, 0);
+	if (itemCount <= 0) return;
+
+	RECT rc;
+	GetClientRect(hTab, &rc);
+	// 内部パディング分の余裕を見ておかないと、ほんの数pxのはみ出しでもスクロール矢印が
+	// 出現し、選択タブ以外が隠れてしまう。安全マージンとして少し引いておく。
+	UINT dpi = GetDpiForWindow(m_hWnd);
+	int safetyMargin = MulDiv(6, (int)dpi, 96);
+	int tabWidth = ((rc.right - rc.left) - safetyMargin) / itemCount;
+
+	int tabHeight = MulDiv(24, (int)dpi, 96);
+
+	TabCtrl_SetItemSize(hTab, tabWidth, tabHeight);
 }

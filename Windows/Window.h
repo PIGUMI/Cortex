@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <functional>
 #include <Richedit.h>
 #include <RichOle.h>
 #include <commctrl.h>
@@ -35,6 +36,34 @@ struct TabPageControl {
 	int childTabId;
 };
 
+// SetControlColorで設定した文字色・背景色を保持する。
+// backgroundBrushはWM_CTLCOLOR*が返すブラシとして使い回すためのキャッシュ。
+struct ControlColor {
+	COLORREF textColor = RGB(0, 0, 0);
+	COLORREF backgroundColor = RGB(255, 255, 255);
+	HBRUSH backgroundBrush = nullptr;
+};
+
+// コントロール作成時点の「親のクライアント領域に対する割合」を保持し、
+// リサイズのたびにその割合を保ったまま再配置するための情報。
+struct ControlLayout {
+	int id;
+	double fracX;
+	double fracY;
+	double fracWidth;
+	double fracHeight;
+};
+
+// 自作タイトルバー(帯)に置くボタンのID。
+// アプリ側が使うCreate系のidと衝突しないよう大きな番号を予約する。
+enum TitleBarButtonId : int {
+	ID_TITLEBAR_FILE = 40001,
+	ID_TITLEBAR_EDIT = 40002,
+	ID_TITLEBAR_MIN = 40003,
+	ID_TITLEBAR_MAXRESTORE = 40004,
+	ID_TITLEBAR_CLOSE = 40005,
+};
+
 class Window
 {
 public:
@@ -43,7 +72,7 @@ public:
 public:
 	bool Initialize(HINSTANCE hInstance, int nCmdShow);
 
-	HWND CreateButton(int id, const std::string& text, int x, int y, int width, int height, HWND hwnd = nullptr);
+	HWND CreateButton(int id, const std::string& text, int x, int y, int width, int height, HWND hwnd = nullptr,bool flat = false);
 	HWND CreateEdit(int id, const std::string& text, int x, int y, int width, int height);
 	HWND CreateTextBox(int id, const std::string& text, int x, int y, int width, int height, HWND hwnd = nullptr);
 	void AddTextBoxText(int id, const std::string& text);
@@ -55,6 +84,10 @@ public:
 	void RemoveComboBoxItem(int id, int index);
 	HWND CreateScrollBar(int id, int x, int y, int width, int height, bool isVertical);
 	HWND CreateRichEdit(int id, const std::string& text, int x, int y, int width, int height, HWND hwnd = nullptr);
+	void SetControlColor(int id, COLORREF textColor, COLORREF backgroundColor);
+	void SetRichEditPlaceholder(int id, const std::string& placeholder);
+	void ShowRichEditPlaceholder(int id);
+	void HideRichEditPlaceholder(int id);
 	HWND CreateListView(int id, int x, int y, int width, int height, DWORD style = LVS_REPORT);
 	void AddListViewColumn(int id, const std::string& text, int width);
 	void AddListViewItem(int id, int row, int col, const std::string& text);
@@ -104,6 +137,16 @@ public:
 	void SetWindowTitle(const std::string& title);
 	int GetClientWidth() const;
 	int GetClientHeight() const;
+	int GetTitleBarHeight() const { return m_titleBarHeight; }
+	void LayoutTitleBarButtons();
+	void ShowTitleBarMenu(int buttonId);
+	void DrawFlatButton(LPDRAWITEMSTRUCT drawItem);
+	void DrawTabItem(LPDRAWITEMSTRUCT drawItem);
+	void SetResizeCallback(std::function<void(int, int)> callback) { m_onResize = callback; }
+	void NotifyResize(int width, int height) { if (m_onResize) m_onResize(width, height); }
+	void ApplyProportionalLayout();
+	void AutoSizeTabItems(int id);
+	HBRUSH HandleCtlColor(int id, HDC hdc);
 public:
 	WNDCLASSEX m_wcex{};
 	RECT rect;
@@ -121,5 +164,16 @@ private:
 	Window() = default;
 	~Window() = default;
 private:
+	void ApplyModernWindowStyle(HWND hwnd);
+	HFONT GetDefaultFont();
+	void CreateTitleBar();
+	void RegisterControlLayout(int id, HWND hControl);
+private:
 	static Window* m_instance;
+	HFONT m_defaultFont = nullptr;
+	int m_titleBarHeight = 0;
+	std::function<void(int, int)> m_onResize;
+	std::vector<ControlLayout> m_controlLayouts;
+	std::map<int, std::string> m_placeholders;
+	std::map<int, ControlColor> m_controlColors;
 };
