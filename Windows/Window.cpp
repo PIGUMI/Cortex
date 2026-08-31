@@ -282,6 +282,7 @@ bool Window::Initialize(HINSTANCE hInstance, int nCmdShow)
 		MessageBox(nullptr, "ウインドウの作成に失敗", "エラー", MB_OK | MB_ICONERROR);
 		return false;
 	}
+
 	ApplyModernWindowStyle(m_hWnd);
 	CreateTitleBar();
 	ShowWindow(m_hWnd, nCmdShow);
