@@ -2,9 +2,15 @@
 <!--
   Directory.Build.props
   MSBuild がソリューション配下の全 .vcxproj を読み込む前に自動 import する共通設定ファイル。
-  ここでヘッダオンリー依存（git submodule）のインクルードパスを一括で通す。
-  - ThirdParty/json            : nlohmann/json  (<nlohmann/json.hpp>)
-  - ThirdParty/DirectX-Headers : DirectX Agility Headers (<d3d12.h> / <d3dx12.h>)
+  ここで外部依存 (git submodule) をまとめて配線する。
+
+  ヘッダオンリー依存 (取得のみ・ビルド不要):
+    - ThirdParty/json            : nlohmann/json  (<nlohmann/json.hpp>)
+    - ThirdParty/DirectX-Headers : DirectX Agility Headers (<d3d12.h> / <d3dx12.h>)
+
+  CMake ビルドが必要な依存:
+    - LocalLLM/llama.cpp : scripts\setup.ps1 でビルド。Application だけがリンクする。
+
   これにより各 .vcxproj から NuGet 依存 (nlohmann.json / Microsoft.Direct3D.D3D12) を撤去できる。
 -->
 <Project>
@@ -12,13 +18,31 @@
     <CortexRoot>$(MSBuildThisFileDirectory)</CortexRoot>
     <CortexJsonInclude>$(CortexRoot)ThirdParty\json\single_include</CortexJsonInclude>
     <CortexDxHeadersInclude>$(CortexRoot)ThirdParty\DirectX-Headers\include</CortexDxHeadersInclude>
-    <!-- llama.cpp を CMake でビルドした際の成果物ルート (scripts\setup.ps1 が生成) -->
-    <CortexLlamaRoot>$(CortexRoot)LocalLLM\llama.cpp</CortexLlamaRoot>
+
+    <!-- llama.cpp の CMake 成果物ルート (scripts\setup.ps1 が生成) -->
+    <CortexLlamaBuildDir>$(CortexRoot)LocalLLM\llama.cpp\build</CortexLlamaBuildDir>
+    <!-- llama.cpp を CUDA 有効でビルドした場合は true にする (既定 false = CPU ビルド) -->
+    <CortexLlamaCuda Condition="'$(CortexLlamaCuda)' == ''">false</CortexLlamaCuda>
   </PropertyGroup>
 
+  <!-- ヘッダオンリー依存のインクルードパスを全プロジェクトへ -->
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- llama.cpp のリンク設定は Application (x64) のみ -->
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64'">
+    <Link>
+      <AdditionalLibraryDirectories>$(CortexLlamaBuildDir)\src\Release;$(CortexLlamaBuildDir)\ggml\src\Release;$(CortexLlamaBuildDir)\common\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexLlamaCuda)' == 'true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(CortexLlamaBuildDir)\ggml\src\ggml-cuda\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ggml-cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
 </Project>

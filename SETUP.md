@@ -13,7 +13,7 @@ Windows / C++20 / DirectX12 + llama.cpp のデスクトップアプリ。
 | Visual Studio 2022 (v143) | 本体ビルド | ワークロード「C++ によるデスクトップ開発」/ 最新 Windows 10 or 11 SDK |
 | Git | submodule 取得 | |
 | CMake 3.24+ | llama.cpp / curl のビルド | VS 同梱のもので可 (`C:\Program Files\CMake` でも可) |
-| NVIDIA CUDA Toolkit | llama.cpp の GPU 実行 | **任意**。無い場合は CPU ビルド (`-NoCuda`) |
+| NVIDIA CUDA Toolkit | llama.cpp の GPU 実行 | **任意**。無い場合は CPU ビルド (`-NoCuda`)。既定は CPU ビルド |
 
 ---
 
@@ -35,7 +35,10 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 オプション:
 
 ```powershell
-# CUDA 無し（CPU のみ）
+# CUDA 有効でビルド（要 CUDA Toolkit）
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+
+# CUDA 無し（CPU のみ）★既定。CUDA Toolkit 未導入ならこちら
 powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -NoCuda
 
 # curl も静的ライブラリでビルド
@@ -46,6 +49,15 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -Clean
 ```
 
 > CUDA ビルドは 15〜40 分かかることがある。`nvcc` が PATH に無いと警告が出る。
+
+### CPU ビルド ⇄ CUDA ビルドの切り替え
+
+`Application` が `ggml-cuda.lib` をリンクするかどうかは
+**`Directory.Build.props` の `<CortexLlamaCuda>`** で決まる（既定 `false` = CPU）。
+
+- CUDA を使う場合: `<CortexLlamaCuda>true</CortexLlamaCuda>` にして
+  `scripts\setup.ps1`（`-NoCuda` 無し）で llama.cpp を再ビルド。
+- `Application.vcxproj` 側は編集不要（llama.cpp のリンク設定は `Directory.Build.props` に集約済み）。
 
 ---
 
@@ -129,9 +141,8 @@ git commit -m "deps: bump <name> to <tag>"
 
 **`nvcc` が無い / CUDA でビルドが止まる**
 `scripts\setup.ps1 -NoCuda -Clean` で CPU ビルドし直す。
-`Application.vcxproj` は `ggml-cuda.lib` をリンク指定しているので、CUDA 無しビルドに切り替えた場合は
-`Application.vcxproj` の `<AdditionalDependencies>` から `ggml-cuda.lib` を、
-`<AdditionalLibraryDirectories>` から `...\ggml-cuda\Release` を外す。
+`<CortexLlamaCuda>` が `false`（既定）なら `Application` は `ggml-cuda.lib` をリンクしないので
+プロジェクトファイルの編集は不要。
 
 **`llama.lib` が見つからない (LNK1104)**
 llama.cpp のビルドが未完了か Debug でビルドしている。`Release / x64` で `scripts\setup.ps1` を再実行。

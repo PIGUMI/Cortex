@@ -82,8 +82,6 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../LocalLLM/llama.cpp/build/src/Release;../LocalLLM/llama.cpp/build/ggml/src/Release;../LocalLLM/llama.cpp/build/ggml/src/ggml-cuda/Release;../LocalLLM/llama.cpp/build/common/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;ggml-cuda.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -100,8 +98,6 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../LocalLLM/llama.cpp/build/src/Release;../LocalLLM/llama.cpp/build/ggml/src/Release;../LocalLLM/llama.cpp/build/ggml/src/ggml-cuda/Release;../LocalLLM/llama.cpp/build/common/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;ggml-cuda.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -116,8 +112,6 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../LocalLLM/llama.cpp/build/src/Release;../LocalLLM/llama.cpp/build/ggml/src/Release;../LocalLLM/llama.cpp/build/ggml/src/ggml-cuda/Release;../LocalLLM/llama.cpp/build/common/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;ggml-cuda.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -134,8 +128,6 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../LocalLLM/llama.cpp/build/src/Release;../LocalLLM/llama.cpp/build/ggml/src/Release;../LocalLLM/llama.cpp/build/ggml/src/ggml-cuda/Release;../LocalLLM/llama.cpp/build/common/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;ggml-cuda.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
