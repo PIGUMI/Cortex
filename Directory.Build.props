@@ -4,12 +4,16 @@
   MSBuild がソリューション配下の全 .vcxproj を読み込む前に自動 import する共通設定ファイル。
   ここで外部依存 (git submodule) をまとめて配線する。
 
-  ヘッダオンリー依存 (取得のみ・ビルド不要):
+  == ヘッダオンリー依存 (git submodule 取得のみ・ビルド不要) ==
     - ThirdParty/json            : nlohmann/json  (<nlohmann/json.hpp>)
     - ThirdParty/DirectX-Headers : DirectX Agility Headers (<d3d12.h> / <d3dx12.h>)
 
-  CMake ビルドが必要な依存:
-    - LocalLLM/llama.cpp : scripts\setup.ps1 でビルド。Application だけがリンクする。
+  == CMake ビルドが必要な依存 (既定では無効) ==
+    - LocalLLM/llama.cpp : ローカル LLM 推論 (BaseLLM クラス) 用。
+      既定 (CortexUseLlama=false) では BaseLLM.cpp をビルド対象から外し、
+      llama.cpp を一切参照しない。→ llama.cpp を CMake ビルドしなくてもソリューションが通る。
+      使う場合は README「LocalLLM / llama.cpp のビルド」に従いビルドし、
+      下の CortexUseLlama を true にする (CUDA を使うなら CortexLlamaCuda も true)。
 
   これにより各 .vcxproj から NuGet 依存 (nlohmann.json / Microsoft.Direct3D.D3D12) を撤去できる。
 -->
@@ -19,10 +23,12 @@
     <CortexJsonInclude>$(CortexRoot)ThirdParty\json\single_include</CortexJsonInclude>
     <CortexDxHeadersInclude>$(CortexRoot)ThirdParty\DirectX-Headers\include</CortexDxHeadersInclude>
 
+    <!-- ローカル LLM (llama.cpp / BaseLLM) を有効にするか。既定 false。 -->
+    <CortexUseLlama Condition="'$(CortexUseLlama)' == ''">false</CortexUseLlama>
+    <!-- llama.cpp を CUDA 有効でビルドした場合に true (CortexUseLlama=true が前提)。既定 false。 -->
+    <CortexLlamaCuda Condition="'$(CortexLlamaCuda)' == ''">false</CortexLlamaCuda>
     <!-- llama.cpp の CMake 成果物ルート (scripts\setup.ps1 が生成) -->
     <CortexLlamaBuildDir>$(CortexRoot)LocalLLM\llama.cpp\build</CortexLlamaBuildDir>
-    <!-- llama.cpp を CUDA 有効でビルドした場合は true にする (既定 false = CPU ビルド) -->
-    <CortexLlamaCuda Condition="'$(CortexLlamaCuda)' == ''">false</CortexLlamaCuda>
   </PropertyGroup>
 
   <!-- ヘッダオンリー依存のインクルードパスを全プロジェクトへ -->
@@ -32,14 +38,22 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
-  <!-- llama.cpp のリンク設定は Application (x64) のみ -->
-  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64'">
+  <!-- CortexUseLlama=true のときだけ: BaseLLM.cpp に llama.cpp のインクルードパスを通す -->
+  <ItemDefinitionGroup Condition="'$(CortexUseLlama)' == 'true'">
+    <ClCompile>
+      <PreprocessorDefinitions>CORTEX_USE_LLAMA=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(CortexRoot)LocalLLM\llama.cpp\include;$(CortexRoot)LocalLLM\llama.cpp\ggml\include;$(CortexRoot)LocalLLM\llama.cpp\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- llama.cpp のリンクは Application (x64) かつ CortexUseLlama=true のときだけ -->
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexUseLlama)' == 'true'">
     <Link>
       <AdditionalLibraryDirectories>$(CortexLlamaBuildDir)\src\Release;$(CortexLlamaBuildDir)\ggml\src\Release;$(CortexLlamaBuildDir)\common\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;llama-common.lib;llama-common-base.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexLlamaCuda)' == 'true'">
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexUseLlama)' == 'true' and '$(CortexLlamaCuda)' == 'true'">
     <Link>
       <AdditionalLibraryDirectories>$(CortexLlamaBuildDir)\ggml\src\ggml-cuda\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ggml-cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>

@@ -1,6 +1,20 @@
 ﻿#pragma once
 /*
 * llama.cppを使用したLLMの基底クラス
+*
+* [ビルドについて]
+* このクラス (BaseLLM.cpp) は submodule LocalLLM/llama.cpp を CMake でビルドして
+* 得られる静的/動的ライブラリ (llama.lib / ggml*.lib / llama-common*.lib) に依存する。
+*
+* 既定ではビルド対象から外してある (Directory.Build.props の CortexUseLlama=false)。
+* そのため llama.cpp をビルドしなくても Cortex.sln 全体がビルドできる。
+* サーバー経由の LLM 呼び出し (llamaServer.h / LocalLLM::CallLlamaServer*) は
+* WinHTTP 実装なので llama.cpp 不要で、こちらは常に利用可能。
+*
+* このクラスを使う手順は README の「LocalLLM / llama.cpp のビルド」を参照:
+*   1. リポジトリを ASCII のみのパスに置く (CMake が日本語パスでクラッシュするため)
+*   2. scripts\setup.ps1 で llama.cpp をビルド
+*   3. Directory.Build.props で CortexUseLlama=true (CUDA 利用時は CortexLlamaCuda=true) に設定
 */
 
 #include "Helper.h"

@@ -105,7 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>llama.cpp\include;llama.cpp\ggml\include;llama.cpp\common;%(AdditionalIncludeDirectories);../Helper</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Helper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -121,7 +121,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>llama.cpp\include;llama.cpp\ggml\include;llama.cpp\common;%(AdditionalIncludeDirectories);../Helper</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Helper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,7 +129,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BaseLLM.cpp" />
+    <!-- BaseLLM は llama.cpp (要 CMake ビルド) に依存するため、既定ではビルド対象外。
+         有効化するには README「LocalLLM / llama.cpp のビルド」を参照し、
+         ビルド時に /p:CortexUseLlama=true を指定するか Directory.Build.props で設定する。 -->
+    <ClCompile Include="BaseLLM.cpp" Condition="'$(CortexUseLlama)' == 'true'" />
     <ClCompile Include="llamaServer.cpp" />
   </ItemGroup>
   <ItemGroup>

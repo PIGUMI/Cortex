@@ -3,89 +3,119 @@
     Cortex の依存関係セットアップスクリプト。
 
 .DESCRIPTION
-    1. git submodule (llama.cpp / curl / json / DirectX-Headers) を取得・更新する
-    2. llama.cpp を CMake (Visual Studio 17 2022 / x64 / Release) でビルドする
-       -> Application プロジェクトが参照する .lib / .dll を生成する
-    3. (任意) curl を静的ライブラリとしてビルドする
+    1. git submodule (json / DirectX-Headers / llama.cpp / curl) を取得・更新する  ← 常に実行
+    2. (任意) LocalLLM/llama.cpp を CMake (Visual Studio 17 2022 / x64 / Release) でビルドする
+       -> BaseLLM クラスを使う場合のみ必要。-Llama を付けたときだけ実行。
+    3. (任意) curl を静的ライブラリとしてビルドする  (-BuildCurl)
 
     json と DirectX-Headers はヘッダオンリーのため取得のみでビルド不要。
     インクルードパスはリポジトリ直下の Directory.Build.props が全 .vcxproj へ一括で通す。
 
-.PARAMETER NoCuda
-    llama.cpp を CUDA 無し (CPU のみ) でビルドする。既定は CUDA 有効。
-    ※ CUDA 有効ビルドには NVIDIA CUDA Toolkit が必要。
+.PARAMETER Llama
+    LocalLLM/llama.cpp をビルドする。既定ではスキップ (Cortex.sln は llama.cpp 無しでビルド可能)。
+
+.PARAMETER Cuda
+    llama.cpp を CUDA 有効でビルドする (要 NVIDIA CUDA Toolkit / nvcc)。既定は CPU のみ。
 
 .PARAMETER BuildCurl
-    curl も併せてビルドする (既定はスキップ)。
+    curl も併せてビルドする。
 
 .PARAMETER Clean
     llama.cpp / curl の build ディレクトリを削除してから構成し直す。
 
 .EXAMPLE
+    # submodule 取得のみ
     powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -NoCuda -BuildCurl
+    # llama.cpp も CPU ビルド
+    powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -Llama
+
+.EXAMPLE
+    # llama.cpp を CUDA ビルド
+    powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -Llama -Cuda
 #>
 [CmdletBinding()]
 param(
-    [switch]$NoCuda,
+    [switch]$Llama,
+    [switch]$Cuda,
     [switch]$BuildCurl,
     [switch]$Clean
 )
 
 $ErrorActionPreference = 'Stop'
+try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false) } catch {}
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
 function Write-Step($msg) { Write-Host "`n==== $msg ====" -ForegroundColor Cyan }
 function Require-Command($name) {
     if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
-        throw "'$name' が PATH に見つかりません。インストールするか、'Developer PowerShell for VS 2022' から実行してください。"
+        throw "'$name' が PATH に見つかりません。インストールするか 'Developer PowerShell for VS 2022' から実行してください。"
     }
+}
+function Invoke-Native {
+    param([Parameter(Mandatory)][string]$Exe, [Parameter(ValueFromRemainingArguments)][string[]]$Args)
+    & $Exe @Args
+    if ($LASTEXITCODE -ne 0) { throw "$Exe が終了コード $LASTEXITCODE で失敗しました。" }
 }
 
 Require-Command git
-Require-Command cmake
 
 # ----------------------------------------------------------------------
-Write-Step "1/3  git submodule を取得・更新"
-git submodule sync --recursive
-git submodule update --init --recursive --progress
+Write-Step "git submodule を取得・更新"
+Invoke-Native git submodule sync --recursive
+Invoke-Native git submodule update --init --recursive --progress
 git submodule status --recursive
 
+if (-not $Llama) {
+    Write-Step "完了 (submodule のみ)"
+    Write-Host @"
+Cortex.sln は Release / x64 でそのままビルドできます。
+ローカル LLM (BaseLLM / llama.cpp) を使う場合は -Llama を付けて再実行してください。
+詳細は README「LocalLLM / llama.cpp のビルド」。
+"@ -ForegroundColor Green
+    return
+}
+
 # ----------------------------------------------------------------------
-Write-Step "2/3  llama.cpp をビルド (Visual Studio 17 2022 / x64 / Release)"
+Write-Step "llama.cpp をビルド (Visual Studio 17 2022 / x64 / Release)"
+Require-Command cmake
+
+# CMake (4.0.x) は非 ASCII パスの VS ジェネレーターでクラッシュする
+if ($RepoRoot -match '[^\u0000-\u007F]') {
+    throw @"
+リポジトリのパスに非 ASCII 文字が含まれています:
+  $RepoRoot
+CMake の Visual Studio ジェネレーターはこのパスでクラッシュします。
+対処:
+  - リポジトリを C:\dev\Cortex などへ移動する (推奨)
+  - もしくは  subst X: "<ASCII 親フォルダ>"  で ASCII ドライブを割り当て、X:\Cortex から再実行
+詳細は README「事前条件：リポジトリを ASCII のみのパスに置く」。
+"@
+}
 
 $LlamaSrc   = Join-Path $RepoRoot 'LocalLLM\llama.cpp'
 $LlamaBuild = Join-Path $LlamaSrc 'build'
-
 if ($Clean -and (Test-Path $LlamaBuild)) {
     Write-Host "  build ディレクトリを削除: $LlamaBuild"
     Remove-Item -Recurse -Force $LlamaBuild
 }
 
-$cudaFlag = if ($NoCuda) { 'OFF' } else { 'ON' }
-if (-not $NoCuda -and -not (Get-Command nvcc -ErrorAction SilentlyContinue)) {
-    Write-Warning "nvcc が見つかりません。CUDA Toolkit 未導入の場合は -NoCuda を付けて再実行してください。"
+$cudaFlag = if ($Cuda) { 'ON' } else { 'OFF' }
+if ($Cuda -and -not (Get-Command nvcc -ErrorAction SilentlyContinue)) {
+    throw "nvcc が見つかりません。CUDA Toolkit を導入するか -Cuda を外して実行してください。"
 }
 
-$llamaArgs = @(
-    '-S', $LlamaSrc,
-    '-B', $LlamaBuild,
-    '-G', 'Visual Studio 17 2022',
-    '-A', 'x64',
-    '-DBUILD_SHARED_LIBS=ON',      # llama / ggml を DLL 化 (Application が実行時に参照)
-    "-DGGML_CUDA=$cudaFlag",
-    '-DLLAMA_CURL=OFF',            # モデル取得は使わない (HTTP は WinHTTP 実装)
-    '-DLLAMA_BUILD_COMMON=ON',     # llama-common(-base).lib が必要
-    '-DLLAMA_BUILD_TESTS=OFF',
-    '-DLLAMA_BUILD_EXAMPLES=OFF',
-    '-DLLAMA_BUILD_TOOLS=OFF',
-    '-DLLAMA_BUILD_SERVER=OFF'
-)
-cmake @llamaArgs
-cmake --build $LlamaBuild --config Release --parallel
+Invoke-Native cmake `
+    -S $LlamaSrc -B $LlamaBuild -G 'Visual Studio 17 2022' -A x64 `
+    -DBUILD_SHARED_LIBS=ON `
+    "-DGGML_CUDA=$cudaFlag" `
+    -DLLAMA_CURL=OFF `
+    -DLLAMA_BUILD_COMMON=ON `
+    -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF `
+    -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_SERVER=OFF
+Invoke-Native cmake --build $LlamaBuild --config Release --parallel
 
 Write-Host "`n  生成された .lib:" -ForegroundColor Green
 Get-ChildItem -Recurse -Filter *.lib $LlamaBuild |
@@ -93,25 +123,21 @@ Get-ChildItem -Recurse -Filter *.lib $LlamaBuild |
     ForEach-Object { "    " + $_.FullName.Substring($RepoRoot.Length + 1) }
 
 # ----------------------------------------------------------------------
-Write-Step "3/3  curl"
 if ($BuildCurl) {
+    Write-Step "curl をビルド"
     $CurlSrc   = Join-Path $RepoRoot 'Curl\curl'
     $CurlBuild = Join-Path $CurlSrc 'build'
     if ($Clean -and (Test-Path $CurlBuild)) { Remove-Item -Recurse -Force $CurlBuild }
-    cmake -S $CurlSrc -B $CurlBuild -G 'Visual Studio 17 2022' -A x64 `
+    Invoke-Native cmake -S $CurlSrc -B $CurlBuild -G 'Visual Studio 17 2022' -A x64 `
         -DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DCURL_USE_SCHANNEL=ON `
         -DCURL_ZLIB=OFF -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_LIBIDN2=OFF
-    cmake --build $CurlBuild --config Release --parallel
-} else {
-    Write-Host "  スキップ (-BuildCurl 未指定)。curl はまだソースから参照されていません。"
+    Invoke-Native cmake --build $CurlBuild --config Release --parallel
 }
 
 Write-Step "完了"
 Write-Host @"
 次の手順:
-  1. Visual Studio で Cortex.sln を開く
-  2. 構成を  Release / x64  に設定
-  3. Application プロジェクトをビルド & 実行
-
-NuGet 復元は不要になりました (nlohmann/json と d3dx12.h は submodule + Directory.Build.props 経由)。
+  1. Directory.Build.props で  <CortexUseLlama> を true$(if ($Cuda) { ' 、<CortexLlamaCuda> も true' })  にする
+     (または  msbuild Cortex.sln /p:CortexUseLlama=true$(if ($Cuda) { ' /p:CortexLlamaCuda=true' }) )
+  2. Visual Studio で Cortex.sln を開き、Release / x64 で Application をビルド & 実行
 "@ -ForegroundColor Green
