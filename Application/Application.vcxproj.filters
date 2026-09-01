@@ -15,9 +15,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Template.h">
       <Filter>ソース ファイル</Filter>
     </ClInclude>

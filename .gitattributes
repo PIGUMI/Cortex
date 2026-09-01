@@ -3,6 +3,10 @@
 ###############################################################################
 * text=auto
 
+# PowerShell scripts: keep CRLF + allow UTF-8 BOM (Windows PowerShell 5.1 needs
+# the BOM to read non-ASCII comments correctly).
+*.ps1 text eol=crlf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

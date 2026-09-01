@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Directory.Build.props
+  MSBuild がソリューション配下の全 .vcxproj を読み込む前に自動 import する共通設定ファイル。
+  ここでヘッダオンリー依存（git submodule）のインクルードパスを一括で通す。
+  - ThirdParty/json            : nlohmann/json  (<nlohmann/json.hpp>)
+  - ThirdParty/DirectX-Headers : DirectX Agility Headers (<d3d12.h> / <d3dx12.h>)
+  これにより各 .vcxproj から NuGet 依存 (nlohmann.json / Microsoft.Direct3D.D3D12) を撤去できる。
+-->
+<Project>
+  <PropertyGroup>
+    <CortexRoot>$(MSBuildThisFileDirectory)</CortexRoot>
+    <CortexJsonInclude>$(CortexRoot)ThirdParty\json\single_include</CortexJsonInclude>
+    <CortexDxHeadersInclude>$(CortexRoot)ThirdParty\DirectX-Headers\include</CortexDxHeadersInclude>
+    <!-- llama.cpp を CMake でビルドした際の成果物ルート (scripts\setup.ps1 が生成) -->
+    <CortexLlamaRoot>$(CortexRoot)LocalLLM\llama.cpp</CortexLlamaRoot>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>
