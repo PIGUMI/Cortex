@@ -3,12 +3,15 @@
     Cortex の依存関係セットアップスクリプト。
 
 .DESCRIPTION
-    1. git submodule (json / DirectX-Headers / llama.cpp / curl) を取得・更新する  ← 常に実行
-    2. (任意) LocalLLM/llama.cpp を CMake (Visual Studio 17 2022 / x64 / Release) でビルドする
+    1. git submodule (json / DirectX-Headers / DirectXTex / assimp / llama.cpp / curl) を取得・更新する  ← 常に実行
+    2. assimp を CMake (Visual Studio 17 2022 / x64 / Debug + Release) で静的ライブラリとしてビルドする  ← 常に実行
+       -> モデル読み込みに必須。Cortex.sln のビルド前に一度実行しておくこと。
+    3. (任意) LocalLLM/llama.cpp を CMake (Visual Studio 17 2022 / x64 / Release) でビルドする
        -> BaseLLM クラスを使う場合のみ必要。-Llama を付けたときだけ実行。
-    3. (任意) curl を静的ライブラリとしてビルドする  (-BuildCurl)
+    4. (任意) curl を静的ライブラリとしてビルドする  (-BuildCurl)
 
-    json と DirectX-Headers はヘッダオンリーのため取得のみでビルド不要。
+    json / DirectX-Headers はヘッダオンリーのため取得のみでビルド不要。
+    DirectXTex は Manager が .vcxproj を ProjectReference しているため CMake ビルド不要。
     インクルードパスはリポジトリ直下の Directory.Build.props が全 .vcxproj へ一括で通す。
 
 .PARAMETER Llama
@@ -21,7 +24,7 @@
     curl も併せてビルドする。
 
 .PARAMETER Clean
-    llama.cpp / curl の build ディレクトリを削除してから構成し直す。
+    assimp / llama.cpp / curl の build ディレクトリを削除してから構成し直す。
 
 .EXAMPLE
     # submodule 取得のみ
@@ -68,18 +71,8 @@ Invoke-Native git submodule sync --recursive
 Invoke-Native git submodule update --init --recursive --progress
 git submodule status --recursive
 
-if (-not $Llama) {
-    Write-Step "完了 (submodule のみ)"
-    Write-Host @"
-Cortex.sln は Release / x64 でそのままビルドできます。
-ローカル LLM (BaseLLM / llama.cpp) を使う場合は -Llama を付けて再実行してください。
-詳細は README「LocalLLM / llama.cpp のビルド」。
-"@ -ForegroundColor Green
-    return
-}
-
 # ----------------------------------------------------------------------
-Write-Step "llama.cpp をビルド (Visual Studio 17 2022 / x64 / Release)"
+Write-Step "共通ネイティブ依存のビルド準備"
 Require-Command cmake
 
 # CMake (4.0.x) は非 ASCII パスの VS ジェネレーターでクラッシュする
@@ -94,6 +87,52 @@ CMake の Visual Studio ジェネレーターはこのパスでクラッシュ�
 詳細は README「事前条件：リポジトリを ASCII のみのパスに置く」。
 "@
 }
+
+# ----------------------------------------------------------------------
+Write-Step "assimp をビルド (Visual Studio 17 2022 / x64 / Debug + Release)"
+
+$AssimpSrc   = Join-Path $RepoRoot 'ThirdParty\assimp'
+$AssimpBuild = Join-Path $AssimpSrc 'build'
+if ($Clean -and (Test-Path $AssimpBuild)) {
+    Write-Host "  build ディレクトリを削除: $AssimpBuild"
+    Remove-Item -Recurse -Force $AssimpBuild
+}
+
+# 静的ライブラリ / FBX + glTF + OBJ の import・export のみ / 独自 zlib 同梱。
+# assimp.lib と zlibstatic.lib を build\lib\<Config>\ へまとめて出力し、
+# ライブラリ名にツールセット接尾辞 (-vc143-mt) や Debug 接尾辞 (d) を付けない。
+Invoke-Native cmake `
+    -S $AssimpSrc -B $AssimpBuild -G 'Visual Studio 17 2022' -A x64 `
+    "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$AssimpBuild\lib" `
+    -DBUILD_SHARED_LIBS=OFF `
+    -DASSIMP_BUILD_TESTS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_SAMPLES=OFF `
+    -DASSIMP_INSTALL=OFF -DASSIMP_WARNINGS_AS_ERRORS=OFF `
+    -DASSIMP_BUILD_ZLIB=ON `
+    -DASSIMP_INJECT_DEBUG_POSTFIX=OFF "-DLIBRARY_SUFFIX=" `
+    -DASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT=OFF `
+    -DASSIMP_BUILD_OBJ_IMPORTER=ON -DASSIMP_BUILD_FBX_IMPORTER=ON -DASSIMP_BUILD_GLTF_IMPORTER=ON `
+    -DASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT=OFF `
+    -DASSIMP_BUILD_OBJ_EXPORTER=ON -DASSIMP_BUILD_FBX_EXPORTER=ON -DASSIMP_BUILD_GLTF_EXPORTER=ON
+Invoke-Native cmake --build $AssimpBuild --config Debug   --parallel
+Invoke-Native cmake --build $AssimpBuild --config Release --parallel
+
+Write-Host "`n  生成された .lib:" -ForegroundColor Green
+Get-ChildItem -Recurse -Filter *.lib $AssimpBuild |
+    Where-Object { $_.Name -match '^(assimp|zlibstatic)\.lib$' } |
+    ForEach-Object { "    " + $_.FullName.Substring($RepoRoot.Length + 1) }
+
+if (-not $Llama) {
+    Write-Step "完了 (submodule + assimp)"
+    Write-Host @"
+Cortex.sln は Release / x64 でそのままビルドできます (assimp はビルド済み)。
+ローカル LLM (BaseLLM / llama.cpp) を使う場合は -Llama を付けて再実行してください。
+詳細は README「LocalLLM / llama.cpp のビルド」。
+"@ -ForegroundColor Green
+    return
+}
+
+# ----------------------------------------------------------------------
+Write-Step "llama.cpp をビルド (Visual Studio 17 2022 / x64 / Release)"
 
 $LlamaSrc   = Join-Path $RepoRoot 'LocalLLM\llama.cpp'
 $LlamaBuild = Join-Path $LlamaSrc 'build'

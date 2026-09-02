@@ -16,6 +16,13 @@
       プロジェクトへ通す。DirectXTex 自身のビルドには Cortex の設定を注入しない
       (下の ItemDefinitionGroup は ThirdParty 配下のプロジェクトを除外している)。
 
+  == CMake ビルドが必要な依存 (scripts\setup.ps1 で常にビルド) ==
+    - ThirdParty/assimp : モデル読込 (<assimp/Importer.hpp> 等)。静的ライブラリ。
+      setup.ps1 が Debug/Release 両方をビルドし assimp.lib / zlibstatic.lib を
+      build\lib\<Config>\ へ出力する。インクルードは全 Cortex プロジェクトへ、
+      リンクは Application (x64) のみ (下の CortexUseAssimp、既定 true)。
+      setup.ps1 未実行だと Application のリンクが assimp.lib 不足で失敗する。
+
   == CMake ビルドが必要な依存 (既定では無効) ==
     - LocalLLM/llama.cpp : ローカル LLM 推論 (BaseLLM クラス) 用。
       既定 (CortexUseLlama=false) では BaseLLM.cpp をビルド対象から外し、
@@ -32,6 +39,14 @@
     <CortexDxHeadersInclude>$(CortexRoot)ThirdParty\DirectX-Headers\include</CortexDxHeadersInclude>
     <CortexDirectXTexInclude>$(CortexRoot)ThirdParty\DirectXTex\DirectXTex</CortexDirectXTexInclude>
 
+    <!-- assimp。build\include には CMake が生成する config.h / revision.h が入るので先に置く。 -->
+    <CortexAssimpInclude>$(CortexRoot)ThirdParty\assimp\build\include;$(CortexRoot)ThirdParty\assimp\include</CortexAssimpInclude>
+    <!-- assimp.lib / zlibstatic.lib の出力先 (setup.ps1 の -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY と一致) -->
+    <CortexAssimpLibDir>$(CortexRoot)ThirdParty\assimp\build\lib\$(Configuration)</CortexAssimpLibDir>
+    <!-- assimp をリンクするか。既定 true (setup.ps1 が常にビルドするため)。
+         setup.ps1 を実行できない環境では /p:CortexUseAssimp=false でリンクを外せる。 -->
+    <CortexUseAssimp Condition="'$(CortexUseAssimp)' == ''">true</CortexUseAssimp>
+
     <!-- ローカル LLM (llama.cpp / BaseLLM) を有効にするか。既定 false。 -->
     <CortexUseLlama Condition="'$(CortexUseLlama)' == ''">false</CortexUseLlama>
     <!-- llama.cpp を CUDA 有効でビルドした場合に true (CortexUseLlama=true が前提)。既定 false。 -->
@@ -45,8 +60,17 @@
        (SDK 標準ヘッダで素直にビルドさせるため)。 -->
   <ItemDefinitionGroup Condition="!$(MSBuildProjectDirectory.Contains('ThirdParty'))">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);$(CortexDirectXTexInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);$(CortexDirectXTexInclude);$(CortexAssimpInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- assimp のリンクは Application (x64) かつ CortexUseAssimp=true のときだけ。
+       assimp.lib は zlibstatic.lib に依存する (静的リンクなので両方必要)。 -->
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexUseAssimp)' == 'true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(CortexAssimpLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
 
   <!-- CortexUseLlama=true のときだけ: BaseLLM.cpp に llama.cpp のインクルードパスを通す -->
