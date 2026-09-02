@@ -8,6 +8,14 @@
     - ThirdParty/json            : nlohmann/json  (<nlohmann/json.hpp>)
     - ThirdParty/DirectX-Headers : DirectX Agility Headers (<d3d12.h> / <d3dx12.h>)
 
+  == MSBuild ビルドが必要な依存 (ProjectReference で自動ビルド) ==
+    - ThirdParty/DirectXTex : テクスチャ読込/変換 (<DirectXTex.h>)。
+      Manager が DirectXTex_Desktop_2022_Win10.vcxproj を ProjectReference しており、
+      Application ビルド時に依存として自動的にスタティックライブラリがビルド・リンクされる。
+      このファイルではインクルードパス (下の CortexDirectXTexInclude) だけを全 Cortex
+      プロジェクトへ通す。DirectXTex 自身のビルドには Cortex の設定を注入しない
+      (下の ItemDefinitionGroup は ThirdParty 配下のプロジェクトを除外している)。
+
   == CMake ビルドが必要な依存 (既定では無効) ==
     - LocalLLM/llama.cpp : ローカル LLM 推論 (BaseLLM クラス) 用。
       既定 (CortexUseLlama=false) では BaseLLM.cpp をビルド対象から外し、
@@ -22,6 +30,7 @@
     <CortexRoot>$(MSBuildThisFileDirectory)</CortexRoot>
     <CortexJsonInclude>$(CortexRoot)ThirdParty\json\single_include</CortexJsonInclude>
     <CortexDxHeadersInclude>$(CortexRoot)ThirdParty\DirectX-Headers\include</CortexDxHeadersInclude>
+    <CortexDirectXTexInclude>$(CortexRoot)ThirdParty\DirectXTex\DirectXTex</CortexDirectXTexInclude>
 
     <!-- ローカル LLM (llama.cpp / BaseLLM) を有効にするか。既定 false。 -->
     <CortexUseLlama Condition="'$(CortexUseLlama)' == ''">false</CortexUseLlama>
@@ -31,15 +40,17 @@
     <CortexLlamaBuildDir>$(CortexRoot)LocalLLM\llama.cpp\build</CortexLlamaBuildDir>
   </PropertyGroup>
 
-  <!-- ヘッダオンリー依存のインクルードパスを全プロジェクトへ -->
-  <ItemDefinitionGroup>
+  <!-- 外部依存のインクルードパスを全 Cortex プロジェクトへ。
+       ThirdParty 配下のプロジェクト (DirectXTex 等) 自身のビルドには注入しない
+       (SDK 標準ヘッダで素直にビルドさせるため)。 -->
+  <ItemDefinitionGroup Condition="!$(MSBuildProjectDirectory.Contains('ThirdParty'))">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);$(CortexDirectXTexInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
 
   <!-- CortexUseLlama=true のときだけ: BaseLLM.cpp に llama.cpp のインクルードパスを通す -->
-  <ItemDefinitionGroup Condition="'$(CortexUseLlama)' == 'true'">
+  <ItemDefinitionGroup Condition="'$(CortexUseLlama)' == 'true' and !$(MSBuildProjectDirectory.Contains('ThirdParty'))">
     <ClCompile>
       <PreprocessorDefinitions>CORTEX_USE_LLAMA=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(CortexRoot)LocalLLM\llama.cpp\include;$(CortexRoot)LocalLLM\llama.cpp\ggml\include;$(CortexRoot)LocalLLM\llama.cpp\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
