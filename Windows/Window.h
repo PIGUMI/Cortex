@@ -128,6 +128,11 @@ public:
 	int GetWindowWidth() const { return m_windowWidth; }
 	int GetWindowHeight() const { return m_windowHeight; }
 	HWND GetMainWindowHandle() const { return m_hWnd; }
+	// タイトルバーの方式を切り替えるフラグ。Initialize() より前に呼ぶこと。
+	// true  : 自作のカスタムタイトルバー(File/Edit メニュー + 最小化/最大化/閉じるボタン)
+	// false : OS標準のタイトルバー
+	void SetUseCustomTitleBar(bool enable) { m_useCustomTitleBar = enable; }
+	bool IsUsingCustomTitleBar() const { return m_useCustomTitleBar; }
 	HWND GetChildWindowHandle(int id);
 	void UpdateAllTabShowWindows();
 	void UpdateTabShowWindow(int tabID, bool parentVisible = true);
@@ -157,6 +162,7 @@ private:
 	int m_windowWidth = 720;
 	int m_windowHeight = 480;
 	std::string m_windowTitle = "Window";
+	bool m_useCustomTitleBar = true; // 既定は自作タイトルバー
 	HWND m_hWnd = nullptr;
 	std::map<int, HWND> m_childWindows;
 	std::map<int, bool> m_buttonClicked;

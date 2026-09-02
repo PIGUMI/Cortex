@@ -118,7 +118,8 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	// 処理をさせないようにする。TRUEのときに何もせず0を返すと、ウインドウ全体がクライアント領域になる。
 	case WM_NCCALCSIZE:
 	{
-		if (wParam == TRUE && hWnd == Window::GetInstance()->GetMainWindowHandle()) {
+		if (wParam == TRUE && hWnd == Window::GetInstance()->GetMainWindowHandle()
+			&& Window::GetInstance()->IsUsingCustomTitleBar()) {
 			NCCALCSIZE_PARAMS* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
 			WINDOWPLACEMENT wp{};
 			wp.length = sizeof(wp);
@@ -134,13 +135,16 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			return 0;
 		}
-		break;
+		// 標準タイトルバー時、またはサブウインドウはOSに通常の非クライアント領域を計算させる
+		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	// タイトルバーの見た目を消した分、「上端をつかんでドラッグ移動」「端をつかんでリサイズ」
 	// という当たり判定をここで自前判定して復元する。
 	case WM_NCHITTEST:
 	{
 		if (hWnd != Window::GetInstance()->GetMainWindowHandle()) break;
+		// 標準タイトルバー時はOSの判定(ドラッグ移動/リサイズ/システムメニュー)に任せる
+		if (!Window::GetInstance()->IsUsingCustomTitleBar()) return DefWindowProc(hWnd, message, wParam, lParam);
 
 		POINT ptScreen = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		RECT rcWindow;
@@ -177,7 +181,8 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	// タイトルバーを消したことでOSが行う非クライアント領域の再描画(ちらつきの原因)を抑止する
 	case WM_NCACTIVATE:
-		if (hWnd == Window::GetInstance()->GetMainWindowHandle()) {
+		if (hWnd == Window::GetInstance()->GetMainWindowHandle()
+			&& Window::GetInstance()->IsUsingCustomTitleBar()) {
 			return DefWindowProc(hWnd, message, wParam, -1);
 		}
 		break;
@@ -188,7 +193,9 @@ LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			UINT h = HIWORD(lParam);
 			//DirectX::DirectX12::Get()->RequestResize(w, h);
 			if (hWnd == Window::GetInstance()->GetMainWindowHandle()) {
-				Window::GetInstance()->LayoutTitleBarButtons();
+				if (Window::GetInstance()->IsUsingCustomTitleBar()) {
+					Window::GetInstance()->LayoutTitleBarButtons();
+				}
 				Window::GetInstance()->ApplyProportionalLayout();
 				Window::GetInstance()->NotifyResize((int)w, (int)h);
 			}
@@ -284,7 +291,9 @@ bool Window::Initialize(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	ApplyModernWindowStyle(m_hWnd);
-	CreateTitleBar();
+	if (m_useCustomTitleBar) {
+		CreateTitleBar();
+	}
 	ShowWindow(m_hWnd, nCmdShow);
 	UpdateWindow(m_hWnd);
 	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -309,8 +318,11 @@ void Window::ApplyModernWindowStyle(HWND hwnd)
 
 	// タイトルバーを自前描画にする(WM_NCCALCSIZEで非クライアント領域を0にする)と、
 	// 何もしないとDWMの影が付かなくなる。下端を1pxだけ非クライアント扱いにする定石で影を復元する。
-	MARGINS margins = { 0, 0, 0, 1 };
-	DwmExtendFrameIntoClientArea(hwnd, &margins);
+	// OS標準タイトルバー時はこの小細工は不要(OSが枠と影を描く)。
+	if (m_useCustomTitleBar) {
+		MARGINS margins = { 0, 0, 0, 1 };
+		DwmExtendFrameIntoClientArea(hwnd, &margins);
+	}
 }
 
 void Window::CreateTitleBar()

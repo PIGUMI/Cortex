@@ -24,8 +24,11 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 	{
 		/* Windowの初期化 */
 		window->SetWindowTitle("Template");
+		window->SetUseCustomTitleBar(false);
 		window->SetWindowWidth(720);
 		window->SetWindowHeight(480);
+		// タイトルバーの方式を切り替えるフラグ (Initialize より前に呼ぶ)
+		//   true  : 自作カスタムタイトルバー / false : OS標準タイトルバー
 		window->Initialize(hInstance, nCmdShow);
 
 		HWND Sub = window->CreateSubSeparateWindow(1, "Sub Window", 1000, 100, 400, 900);
