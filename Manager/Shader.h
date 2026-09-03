@@ -1,17 +1,5 @@
 ﻿#pragma once
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-/*
-	Class   : Shader
-	Kind    : Singleton
-	Summary : Compiles an HLSL shader pair (VS/PS), then builds and caches the
-	          matching RootSignature and PipelineStateObject from shader
-	          reflection data. Cache entries are keyed by (vsPath + psPath).
-	Author  : Garu
-	Updated : 2026/09/02
-*/
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-// NOTE: ASCII-only comments on purpose - this header is included from both
-//       Shift-JIS (.cpp) and UTF-8 translation units.
+
 
 #include <d3d12.h>
 #include <d3d12shader.h>   // ID3D12ShaderReflection / D3D12_SHADER_INPUT_BIND_DESC
@@ -26,16 +14,13 @@
 
 using Microsoft::WRL::ComPtr;
 
-// One HLSL resource (a CBV or an SRV) paired with the root-parameter index it
-// was assigned to. 'name' is the resource name taken from shader reflection.
+
 struct SlotInfo
 {
 	UINT index = 0;
 	std::string name;
 };
 
-// Everything produced from a single VS+PS pair. Copyable (ComPtr is
-// reference counted), so the getters can hand it back by value.
 struct ShaderCache
 {
 	ComPtr<ID3D12RootSignature> RootSignature;
@@ -55,13 +40,9 @@ public:
 	static void Del();
 
 public:
-	// Compile the VS/PS pair at the given paths and build its RootSignature and
-	// PSO for the requested vertex layout. Cached by (vsPath + psPath); calling
-	// again with the same pair is a no-op that returns true.
-	bool Load(std::string vsPath, std::string psPath, VertexType vertexType);
 
-	// Cache lookups keyed by (vsPath + psPath). The pointer getters return
-	// nullptr when the pair has not been Load()ed.
+	bool Load(std::string vsPath, std::string psPath, VertexType vertexType = VertexType::Default);
+
 	ShaderCache GetShaderCache(std::string vsPath, std::string psPath);
 	ID3D12PipelineState* GetPSO(std::string vsPath, std::string psPath);
 	ID3D12RootSignature* GetRootSignature(std::string vsPath, std::string psPath);

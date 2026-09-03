@@ -1,6 +1,5 @@
 #include <windows.h>
 #include "Template.h"
-
 #include "Window.h"
 
 // Windowsアプリケーションのエントリーポイント

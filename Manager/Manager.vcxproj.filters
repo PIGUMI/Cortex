@@ -15,6 +15,9 @@
     <ClCompile Include="Mesh.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -27,6 +30,9 @@
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
