@@ -18,7 +18,7 @@
 
   == CMake ビルドが必要な依存 (scripts\setup.ps1 で常にビルド) ==
     - ThirdParty/assimp : モデル読込 (<assimp/Importer.hpp> 等)。静的ライブラリ。
-      setup.ps1 が Debug/Release 両方をビルドし assimp.lib / zlibstatic.lib を
+      setup.ps1 が Debug/Release 両方をビルドし assimp.lib / zlib(static) を
       build\lib\<Config>\ へ出力する。インクルードは全 Cortex プロジェクトへ、
       リンクは Application (x64) のみ (下の CortexUseAssimp、既定 true)。
       setup.ps1 未実行だと Application のリンクが assimp.lib 不足で失敗する。
@@ -41,8 +41,11 @@
 
     <!-- assimp。build\include には CMake が生成する config.h / revision.h が入るので先に置く。 -->
     <CortexAssimpInclude>$(CortexRoot)ThirdParty\assimp\build\include;$(CortexRoot)ThirdParty\assimp\include</CortexAssimpInclude>
-    <!-- assimp.lib / zlibstatic.lib の出力先 (setup.ps1 の -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY と一致) -->
+    <!-- assimp.lib / zlib の出力先 (setup.ps1 の -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY と一致) -->
     <CortexAssimpLibDir>$(CortexRoot)ThirdParty\assimp\build\lib\$(Configuration)</CortexAssimpLibDir>
+    <!-- 同梱 zlib は Debug のみ末尾 d が付く (assimp 本体は付かない設定にしてある) -->
+    <CortexZlibLib Condition="'$(Configuration)' == 'Debug'">zlibstaticd.lib</CortexZlibLib>
+    <CortexZlibLib Condition="'$(CortexZlibLib)' == ''">zlibstatic.lib</CortexZlibLib>
     <!-- assimp をリンクするか。既定 true (setup.ps1 が常にビルドするため)。
          setup.ps1 を実行できない環境では /p:CortexUseAssimp=false でリンクを外せる。 -->
     <CortexUseAssimp Condition="'$(CortexUseAssimp)' == ''">true</CortexUseAssimp>
@@ -65,11 +68,11 @@
   </ItemDefinitionGroup>
 
   <!-- assimp のリンクは Application (x64) かつ CortexUseAssimp=true のときだけ。
-       assimp.lib は zlibstatic.lib に依存する (静的リンクなので両方必要)。 -->
+       assimp.lib は同梱 zlib に依存する (静的リンクなので両方必要)。 -->
   <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexUseAssimp)' == 'true'">
     <Link>
       <AdditionalLibraryDirectories>$(CortexAssimpLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp.lib;$(CortexZlibLib);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 

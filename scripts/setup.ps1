@@ -99,8 +99,9 @@ if ($Clean -and (Test-Path $AssimpBuild)) {
 }
 
 # 静的ライブラリ / FBX + glTF + OBJ の import・export のみ / 独自 zlib 同梱。
-# assimp.lib と zlibstatic.lib を build\lib\<Config>\ へまとめて出力し、
-# ライブラリ名にツールセット接尾辞 (-vc143-mt) や Debug 接尾辞 (d) を付けない。
+# assimp.lib と zlib を build\lib\<Config>\ へまとめて出力する。
+# assimp 本体はツールセット接尾辞 (-vc143-mt) も Debug 接尾辞も付けないが、
+# 同梱 zlib だけは Debug で zlibstaticd.lib になる (contrib 側で強制)。
 Invoke-Native cmake `
     -S $AssimpSrc -B $AssimpBuild -G 'Visual Studio 17 2022' -A x64 `
     "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$AssimpBuild\lib" `
@@ -118,7 +119,7 @@ Invoke-Native cmake --build $AssimpBuild --config Release --parallel
 
 Write-Host "`n  生成された .lib:" -ForegroundColor Green
 Get-ChildItem -Recurse -Filter *.lib $AssimpBuild |
-    Where-Object { $_.Name -match '^(assimp|zlibstatic)\.lib$' } |
+    Where-Object { $_.Name -match '^(assimp|zlibstaticd?)\.lib$' } |
     ForEach-Object { "    " + $_.FullName.Substring($RepoRoot.Length + 1) }
 
 if (-not $Llama) {
