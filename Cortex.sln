@@ -17,7 +17,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Thread", "thread\thread.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Manager", "Manager\Manager.vcxproj", "{9AA7B4AE-E54B-48A1-A715-608347DEF720}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTex_Desktop_2022_Win10", "ThirdParty\DirectXTex\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj", "{371B9FA9-4C90-4AC6-A123-ACED756D6C77}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTex", "ThirdParty\DirectXTex\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj", "{371B9FA9-4C90-4AC6-A123-ACED756D6C77}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Component", "Component\Component.vcxproj", "{A2558631-6936-493F-BAA0-9EB80CEF94D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,6 +93,14 @@ Global
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Release|x64.Build.0 = Release|x64
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Release|x86.ActiveCfg = Release|Win32
 		{371B9FA9-4C90-4AC6-A123-ACED756D6C77}.Release|x86.Build.0 = Release|Win32
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Debug|x64.ActiveCfg = Debug|x64
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Debug|x64.Build.0 = Debug|x64
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Debug|x86.ActiveCfg = Debug|Win32
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Debug|x86.Build.0 = Debug|Win32
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Release|x64.ActiveCfg = Release|x64
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Release|x64.Build.0 = Release|x64
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Release|x86.ActiveCfg = Release|Win32
+		{A2558631-6936-493F-BAA0-9EB80CEF94D5}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
