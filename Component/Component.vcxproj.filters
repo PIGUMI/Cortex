@@ -12,9 +12,15 @@
     <ClInclude Include="Camera.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="MeshRender.h">
+      <Filter>Source</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshRender.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>

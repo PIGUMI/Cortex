@@ -10,7 +10,11 @@ public:
 public:
 	void Init() override;
 	void Update() override;
+	void Render() override {}
 	void Release() override;
+	void Load() override {} 
+	void Save() override {}
+
 public:
 	/**
 	 * @brief Views—ñ‚ğæ“¾‚·‚é
@@ -68,4 +72,3 @@ private:
 	float m_nearZ;
 	float m_farZ;
 };
-
