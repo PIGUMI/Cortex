@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>..\Helper;..\DirectX12;..\Manager;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Helper;..\DirectX12;..\Manager;..\Windows;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,7 +119,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>..\Helper;..\DirectX12;..\Manager;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Helper;..\DirectX12;..\Manager;..\Windows;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +135,9 @@
     </ProjectReference>
     <ProjectReference Include="..\Manager\Manager.vcxproj">
       <Project>{9aa7b4ae-e54b-48a1-a715-608347def720}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Windows\Windows.vcxproj">
+      <Project>{7c4c48da-1012-4891-b2c9-c77e8f97bf7e}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
