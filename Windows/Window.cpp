@@ -43,12 +43,15 @@ namespace {
 	}
 }
 
-//extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+// ImGui Win32 バックエンドのメッセージハンドラ。
+// 実体は GUI プロジェクトの imgui_impl_win32.cpp (最終的な Application のリンク時に解決される)。
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /* ウインドウプロシージャ */
 LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	//if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))return true;
+	// ImGui にメッセージを先に渡す (マウス/キーボード入力の取り込み)
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) return true;
 
 	switch (message) {
 	case WM_COMMAND:

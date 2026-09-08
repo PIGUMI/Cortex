@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /LocalLLM/Model/Qwen2.5-Coder-1.5B-Instruct-Q8_0.gguf
 /Application/Model/Qwen2.5-Coder-1.5B-Instruct-Q8_0.gguf
 /Application/Model/Qwen3.5-4B-UD-Q4_K_XL.gguf
+
+# Dear ImGui が実行時に書き出すレイアウト状態 (ユーザーごと・コミット対象外)
+imgui.ini

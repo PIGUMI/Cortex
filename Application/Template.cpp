@@ -11,6 +11,8 @@
 #include "Helper.h"
 #include "llamaServer.h"
 #include "Worker.h"
+#include "GUI.h"
+#include "imgui.h"
 #include <mutex>
 
 
@@ -41,6 +43,9 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 		/* Descriptorの初期化 */
 		descriptor->Init();
+
+		/* ImGui (GUI) の初期化 — DirectX12 / Descriptor の後 */
+		GUI::Get()->Init(window->GetMainWindowHandle());
 	}
 
 	/* ループ処理 */
@@ -74,6 +79,10 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 				else
 				{
 					// 更新処理
+
+					// ImGui フレーム開始 — この後に UI を構築する
+					GUI::Get()->BeginFrame();
+					ImGui::ShowDemoWindow(); // 動作確認用のプレースホルダ
 
 					if (window->IsButtonClicked(4) && (worker == nullptr || worker->IsFinished()))
 					{
@@ -142,7 +151,14 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 					// ここに描画処理を追加する
 
+					// シーン描画をすべて積んだ後、ImGui をバックバッファへ描画
+					GUI::Get()->EndFrame(directX12->GetCommandList(DirectX::DirectX12::CmdListType::Direct));
+
 					directX12->EndDraw();
+
+					// ドッキング/マルチビューポートのサブウィンドウ (EndDraw の後)
+					GUI::Get()->RenderMultiViewport();
+
 					directX12->ApplyResizeIfNeeded();
 
 				}
@@ -160,6 +176,7 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 	/* 終了処理 */
 	{
+		GUI::Del();          // ImGui のバックエンドを先に破棄 (device / descriptor がまだ生きている必要がある)
 		descriptor->Del();
 		directX12->Del();
 		window->DestroyInstance();
