@@ -64,7 +64,9 @@ bool GUI::Init(HWND hwnd)
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	// multi-viewport (ImGui ウィンドウをメインウィンドウの外へ独立 OS ウィンドウ化) は
+	// プラットフォーム統合を詰めるまで無効。docking はメインウィンドウ内で機能する。
+	// io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	m_viewportsEnabled = (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0;
 
 	ImGui::StyleColorsDark();

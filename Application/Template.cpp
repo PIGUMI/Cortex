@@ -1,4 +1,4 @@
-/*
+﻿/*
 * テンプレート
 * C/C++を使用したWindowsアプリケーションの基本的なテンプレート
 * ISO C++20 準拠
@@ -67,22 +67,52 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 		{
 			while (true)
 			{
-				if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+				// 溜まっているメッセージを毎フレーム すべて 捌いてから 1 フレーム描画する。
+				// (if/else で「メッセージ処理 か 描画 か」を交互にすると、マウス操作中は
+				//  メッセージが連続で来て描画フレームがほぼ回らず、ImGui の入力が死ぬ)
+				bool quit = false;
+				while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 				{
 					if (msg.message == WM_QUIT)
 					{
+						quit = true;
 						break;
 					}
 					TranslateMessage(&msg);
 					DispatchMessageA(&msg);
 				}
-				else
+				if (quit)
+				{
+					break;
+				}
+
 				{
 					// 更新処理
 
 					// ImGui フレーム開始 — この後に UI を構築する
 					GUI::Get()->BeginFrame();
-					ImGui::ShowDemoWindow(); // 動作確認用のプレースホルダ
+
+					// --- 動作確認用の小さなテストウィンドウ (720x480 でも収まる位置・サイズ) ---
+					{
+						ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+						ImGui::SetNextWindowSize(ImVec2(320, 170), ImGuiCond_FirstUseEver);
+						ImGui::Begin("GUI Test");
+						ImGui::Text("クリック確認");
+						static int counter = 0;
+						if (ImGui::Button("Click me"))
+						{
+							counter++;
+						}
+						ImGui::SameLine();
+						ImGui::Text("count = %d", counter);
+						static bool checked = false;
+						ImGui::Checkbox("checkbox", &checked);
+						ImGui::Text("mouse: (%.0f, %.0f)  capture=%d",
+							ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y,
+							(int)ImGui::GetIO().WantCaptureMouse);
+						ImGui::End();
+					}
+					// ImGui::ShowDemoWindow(); // フルデモ (720x480 だと画面外へはみ出す)
 
 					if (window->IsButtonClicked(4) && (worker == nullptr || worker->IsFinished()))
 					{
