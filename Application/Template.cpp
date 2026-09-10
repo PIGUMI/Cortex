@@ -41,6 +41,14 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 		/* DirectX12の初期化 */
 		directX12->Init(window->GetMainWindowHandle(), window->GetClientWidth(), window->GetClientHeight());
 
+		// ウィンドウのリサイズを DirectX12 へ伝える。これが無いとスワップチェーンが初期サイズ
+		// のまま固定され、ImGui の io.DisplaySize (実クライアントサイズ) と食い違って
+		// マウス判定位置がズレる。実際の再構築は毎フレームの ApplyResizeIfNeeded() が行う。
+		window->SetResizeCallback([directX12](int w, int h)
+			{
+				directX12->RequestResize(static_cast<UINT>(w), static_cast<UINT>(h));
+			});
+
 		/* Descriptorの初期化 */
 		descriptor->Init();
 
@@ -107,9 +115,14 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 						ImGui::Text("count = %d", counter);
 						static bool checked = false;
 						ImGui::Checkbox("checkbox", &checked);
-						ImGui::Text("mouse: (%.0f, %.0f)  capture=%d",
-							ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y,
-							(int)ImGui::GetIO().WantCaptureMouse);
+						{
+							const ImGuiIO& io = ImGui::GetIO();
+							ImGui::Separator();
+							ImGui::Text("mouse   : (%.0f, %.0f)  capture=%d", io.MousePos.x, io.MousePos.y, (int)io.WantCaptureMouse);
+							ImGui::Text("Display : %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
+							ImGui::Text("Client  : %d x %d", window->GetClientWidth(), window->GetClientHeight());
+							// io.DisplaySize と Client が一致していないと判定位置がズレる
+						}
 						ImGui::End();
 					}
 					// ImGui::ShowDemoWindow(); // フルデモ (720x480 だと画面外へはみ出す)
