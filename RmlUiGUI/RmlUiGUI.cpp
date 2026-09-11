@@ -91,7 +91,10 @@ bool RmlUiGUI::Init(HWND hwnd, UINT width, UINT height)
 		return false;
 	}
 
-	// v1: 専用フォントを同梱していないので、OS 標準フォントを暫定で使う
+	// v1: 専用フォントを同梱していないので、OS 標準フォントを暫定で使う。
+	// 注意: Segoe UI は日本語グリフを持たない。fallback_face で他書体を追加しても
+	// (Yu Gothic 等で検証済み) 期待通りにフォールバックされないケースを確認しており、
+	// 日本語を含むテキストは現状レイアウトが崩れる可能性がある (要調査、TODO)。
 	Rml::LoadFontFace("C:/Windows/Fonts/segoeui.ttf", true);
 
 	m_context = Rml::CreateContext("main", Rml::Vector2i(static_cast<int>(width), static_cast<int>(height)));

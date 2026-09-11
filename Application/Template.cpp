@@ -111,7 +111,7 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 					// --- 動作確認用の小さなテストウィンドウ (720x480 でも収まる位置・サイズ) ---
 					{
-						ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+						ImGui::SetNextWindowPos(ImVec2(380, 280), ImGuiCond_FirstUseEver);
 						ImGui::SetNextWindowSize(ImVec2(320, 170), ImGuiCond_FirstUseEver);
 						ImGui::Begin("GUI Test");
 						ImGui::Text("クリック確認");

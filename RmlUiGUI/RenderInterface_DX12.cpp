@@ -40,8 +40,14 @@ RenderInterface_DX12::~RenderInterface_DX12()
 
 bool RenderInterface_DX12::Init()
 {
-	// 無テクスチャ描画 (texture == 0) 時のフォールバックとして白 1x1 を保証しておく
+	// 無テクスチャ描画 (texture == 0) 時のフォールバックとして白 1x1 を保証しておく。
+	// LoadDefaults() はアップロードを予約するだけで実際の転送は Flush() まで行われない。
+	// ここで明示的に Flush() しておかないと、初回描画時に RenderGeometry() 内の
+	// GetSRVGpuHandle() が遅延 Flush() を発火させてしまい、BeginDraw() が積んでいる
+	// 描画中の Direct コマンドリストを Texture::Flush() が丸ごとリセットしてしまう
+	// (RTV/ビューポート設定やバックバッファの状態遷移が消え、描画が壊れる)
 	Texture::Get()->LoadDefaults();
+	Texture::Get()->Flush();
 
 	m_projectionCB = DirectX::CreateUploadBuffer(256, nullptr);
 	if (m_projectionCB)
@@ -87,13 +93,22 @@ void RenderInterface_DX12::BeginFrame(ID3D12GraphicsCommandList* commandList, UI
 	m_height = height;
 	m_scissorEnabled = false;
 
+	if (!m_whiteTextureReady)
+	{
+		const uint8_t whitePixel[4] = { 255, 255, 255, 255 };
+		m_whiteTextureReady = UploadTexture2D(whitePixel, 1, 1, m_whiteTexture);
+	}
+
 	if (m_projectionMapped && width > 0 && height > 0)
 	{
 		using namespace DirectX;
-		// スクリーン座標系: 原点は左上、+Y が下向き (RmlUi の座標系そのまま)
+		// スクリーン座標系: 原点は左上、+Y が下向き (RmlUi の座標系そのまま)。
+		// HLSL 側は cbuffer をデフォルト (column-major) パッキングで読むため、それ自体が
+		// 暗黙の転置になる。ここで明示的に転置すると二重転置になり translation 成分が
+		// 誤った位置 (w 成分側) に入ってしまうため、転置せずそのまま (row-major) 書き込む。
 		XMMATRIX proj = XMMatrixOrthographicOffCenterLH(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 0.0f, 1.0f);
 		XMFLOAT4X4 projT;
-		XMStoreFloat4x4(&projT, XMMatrixTranspose(proj));
+		XMStoreFloat4x4(&projT, proj);
 		std::memcpy(m_projectionMapped, &projT, sizeof(projT));
 	}
 }
@@ -336,7 +351,7 @@ void RenderInterface_DX12::RenderGeometry(Rml::CompiledGeometryHandle geometry, 
 	else
 	{
 		// テクスチャ無し描画: 白 1x1 を張ることで「サンプル結果 * 頂点色」を頂点色そのものにする
-		srv = Texture::Get()->GetSRVGpuHandle(Texture::DefaultWhiteKey);
+		srv = DirectX::Descriptor::Get()->GetGPUHandle(m_whiteTexture.descriptorIndex);
 	}
 	m_commandList->SetGraphicsRootDescriptorTable(2, srv);
 

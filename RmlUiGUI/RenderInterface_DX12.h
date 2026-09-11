@@ -83,6 +83,13 @@ private:
 	uint64_t m_nextTextureId = 1;
 	std::unordered_map<uint64_t, TextureEntry> m_textures;
 
+	// texture==0 (無テクスチャ描画) フォールバック用の白 1x1。
+	// Texture::DefaultWhiteKey (Texture::BeginUpload 経由、Copy キュー) は D3D12 デバッグレイヤーが
+	// バリアレイアウト不整合を報告する既知の問題があるため使わず、UploadTexture2D
+	// (Direct キューで正しく遷移する自前の経路) で作り直す
+	bool m_whiteTextureReady = false;
+	TextureEntry m_whiteTexture;
+
 	// テクスチャアップロード用の中継バッファ。このフレームの Direct コマンドリスト実行完了
 	// (= 次の BeginFrame が呼ばれる時点) まで参照を保持しておく必要がある
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_pendingUploadBuffers;
