@@ -14,14 +14,41 @@
 #include "GUI.h"
 #include "imgui.h"
 #include "RmlUiGUI.h"
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/ID.h>
 #include <mutex>
 
+namespace
+{
+	// RmlUi 側の Click me クリックを、ImGui 側の確認用カウンタへ反映するための簡易リスナー。
+	// (RmlUi の入力判定が実際に効いているか、ImGui 側の数値で目視確認できるようにする)
+	class ClickCounterListener : public Rml::EventListener
+	{
+	public:
+		explicit ClickCounterListener(int* counter) : m_counter(counter) {}
+		void ProcessEvent(Rml::Event&) override
+		{
+			if (m_counter)
+			{
+				++(*m_counter);
+			}
+		}
+	private:
+		int* m_counter;
+	};
+}
 
 int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 {
 	Window* window = Window::GetInstance();
 	DirectX::DirectX12* directX12 = DirectX::DirectX12::Get();
 	DirectX::Descriptor* descriptor = DirectX::Descriptor::Get();
+
+	// RmlUi の Click me と ImGui の Click me、両方のクリックをここへ集約する
+	int clickCounter = 0;
+	ClickCounterListener clickCounterListener(&clickCounter);
 
 	/* 初期化 */
 	{
@@ -59,7 +86,14 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 		/* RmlUi (実ゲーム UI) の初期化 — DirectX12 / Descriptor の後 */
 		RmlUiGUI::Get()->Init(window->GetMainWindowHandle(), window->GetClientWidth(), window->GetClientHeight());
-		RmlUiGUI::Get()->LoadDocument("Assets/UI/demo.rml");
+		if (Rml::ElementDocument* demoDoc = RmlUiGUI::Get()->LoadDocument("Assets/UI/demo.rml"))
+		{
+			// RmlUi 側の Click me クリックが実際に判定されているか、ImGui のカウンタで確認できるようにする
+			if (Rml::Element* demoButton = demoDoc->GetElementById("demo-button"))
+			{
+				demoButton->AddEventListener(Rml::EventId::Click, &clickCounterListener);
+			}
+		}
 	}
 
 	/* ループ処理 */
@@ -114,14 +148,13 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 						ImGui::SetNextWindowPos(ImVec2(380, 280), ImGuiCond_FirstUseEver);
 						ImGui::SetNextWindowSize(ImVec2(320, 170), ImGuiCond_FirstUseEver);
 						ImGui::Begin("GUI Test");
-						ImGui::Text("クリック確認");
-						static int counter = 0;
+						ImGui::Text("クリック確認 (RmlUi 側のクリックもここに加算されます)");
 						if (ImGui::Button("Click me"))
 						{
-							counter++;
+							clickCounter++;
 						}
 						ImGui::SameLine();
-						ImGui::Text("count = %d", counter);
+						ImGui::Text("count = %d", clickCounter);
 						static bool checked = false;
 						ImGui::Checkbox("checkbox", &checked);
 						{
