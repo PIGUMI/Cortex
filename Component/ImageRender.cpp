@@ -94,16 +94,68 @@ void ImageRender::Update()
 		}
 		std::memcpy(m_transformMapped, &cb, sizeof(cb));
 	}
+
+	if (m_paramsMapped)
+	{
+		const ImageParamsCB params{ m_color };
+		std::memcpy(m_paramsMapped, &params, sizeof(params));
+
+	}
 }
 
 void ImageRender::Render()
 {
 	// 例外処理
 	if (!m_pMaterial || !m_pMaterial->IsCreated() || !m_vertexBuffer || !m_indexBuffer)return;
+
+	auto* cmd = DirectX::DirectX12::Get()->GetCommandList(DirectX::DirectX12::CmdListType::Direct);
+	if (!cmd) return;// 例外処理
+
+	m_pMaterial->Bind(cmd);
+	// シェーダーのキャッシュを取得
+	const ShaderCache& cache = m_pMaterial->GetShaderCache();
+
+	for (const auto& cbv : cache.cbvSlots)
+	{
+		if (cbv.name == "Transform" && m_transformCB)
+		{
+			cmd->SetGraphicsRootConstantBufferView(cbv.index, m_transformCB->GetGPUVirtualAddress());
+		}else if(cbv.name == "ImageParams" && m_paramsCB)
+		{
+			cmd->SetGraphicsRootConstantBufferView(cbv.index, m_paramsCB->GetGPUVirtualAddress());
+		}
+
+		cmd->IASetVertexBuffers(0, 1, &m_vbv);
+		cmd->IASetIndexBuffer(&m_ibv);
+		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		cmd->DrawIndexedInstanced(static_cast<UINT>(6), 1, 0, 0, 0);
+	}
 }
 
 void ImageRender::Release()
 {
+	// トランスフォームの初期化
+	if (m_transformCB)
+	{
+		m_transformCB->Unmap(0, nullptr);
+		m_transformMapped = nullptr;
+		m_transformCB.Reset();
+	}
+	// パラメータの初期化
+	if(m_paramsCB)
+	{
+		m_paramsCB->Unmap(0, nullptr);
+		m_paramsMapped = nullptr;
+		m_paramsCB.Reset();
+	}
+	m_vertexBuffer.Reset();
+	m_indexBuffer.Reset();
+	m_vbv = {};
+	m_ibv = {};
+
+	m_pMaterial = nullptr;
+	m_pCamera = nullptr;
 }
 
 void ImageRender::Load()

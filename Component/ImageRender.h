@@ -21,6 +21,11 @@ public:// 定義
 		World,
 		Billboard,
 	};
+
+	struct ImageParamsCB
+	{
+		DirectX::XMFLOAT4 color;   // 乗算カラー (w = 不透明度)
+	};
 public:// メソッド
 	ImageRender() = default;
 	virtual ~ImageRender() = default;
@@ -75,6 +80,7 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_ibv{};
 	// Transform情報
 	ITransform m_transform;
+	DirectX::XMFLOAT4 m_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_transformCB;
 	void* m_transformMapped = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_paramsCB;
