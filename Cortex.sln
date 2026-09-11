@@ -25,7 +25,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GUI", "GUI\GUI.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RmlUiGUI", "RmlUiGUI\RmlUiGUI.vcxproj", "{9C3D1A6F-8B27-4E5A-BD41-6F02A9C7D835}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Window", "Window", "{DDB4EF12-CC4E-5E88-E6FC-71A802F4DE97}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WindowProcess", "WindowProcess", "{DDB4EF12-CC4E-5E88-E6FC-71A802F4DE97}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
