@@ -99,7 +99,6 @@ void ImageRender::Update()
 	{
 		const ImageParamsCB params{ m_color };
 		std::memcpy(m_paramsMapped, &params, sizeof(params));
-
 	}
 }
 
