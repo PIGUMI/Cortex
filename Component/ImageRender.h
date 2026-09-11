@@ -72,6 +72,18 @@ public: // セッター
 	 */
 	const ITransform& Transform() const { return m_transform; }
 
+	/**
+	 * @brief ImageRenderのカラーを設定する
+	 * @param color 設定するカラー (RGBA)
+	 */
+	void SetColor(const DirectX::XMFLOAT4& color) { m_color = color; }
+
+	/**
+	 * @brief ImageRenderのカラーを取得する
+	 * @return ImageRenderのカラー (RGBA)
+	 */
+	DirectX::XMFLOAT4 GetColor() const { return m_color; }
+
 private:
 	// 頂点情報
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;

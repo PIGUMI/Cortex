@@ -123,13 +123,12 @@ void ImageRender::Render()
 		{
 			cmd->SetGraphicsRootConstantBufferView(cbv.index, m_paramsCB->GetGPUVirtualAddress());
 		}
-
-		cmd->IASetVertexBuffers(0, 1, &m_vbv);
-		cmd->IASetIndexBuffer(&m_ibv);
-		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		cmd->DrawIndexedInstanced(static_cast<UINT>(6), 1, 0, 0, 0);
 	}
+	cmd->IASetVertexBuffers(0, 1, &m_vbv);
+	cmd->IASetIndexBuffer(&m_ibv);
+	cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	cmd->DrawIndexedInstanced(static_cast<UINT>(6), 1, 0, 0, 0);
 }
 
 void ImageRender::Release()
