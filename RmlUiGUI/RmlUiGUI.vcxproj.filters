@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4e6a1c2d-9f38-4b70-8a92-5c1d8e0f7b6a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RenderInterface_DX12.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemInterface_Cortex.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="RmlUiGUI.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RenderInterface_DX12.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemInterface_Cortex.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="RmlUiGUI.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

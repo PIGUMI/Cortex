@@ -1,0 +1,13 @@
+<rml>
+<head>
+	<title>Cortex RmlUi Demo</title>
+	<link type="text/rcss" href="demo.rcss" />
+</head>
+<body>
+	<div id="panel">
+		<h1>Cortex RmlUi Demo</h1>
+		<p>RmlUi の描画パイプライン疎通確認用ドキュメント</p>
+		<button id="demo-button">Click me</button>
+	</div>
+</body>
+</rml>

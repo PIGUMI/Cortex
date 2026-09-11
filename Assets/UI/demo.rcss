@@ -1,0 +1,44 @@
+body
+{
+	font-family: "Segoe UI";
+	color: white;
+}
+
+#panel
+{
+	position: absolute;
+	left: 24px;
+	top: 24px;
+	width: 320px;
+	padding: 16px;
+	background-color: rgba(20, 20, 20, 220);
+	border-radius: 8px;
+}
+
+#panel h1
+{
+	font-size: 20px;
+	margin-bottom: 8px;
+}
+
+#panel p
+{
+	font-size: 14px;
+	color: rgba(220, 220, 220, 255);
+}
+
+#demo-button
+{
+	display: block;
+	margin-top: 12px;
+	padding: 8px 16px;
+	background-color: #3a6ea5;
+	color: white;
+	text-align: center;
+	border-radius: 4px;
+}
+
+#demo-button:hover
+{
+	background-color: #4a84c4;
+}

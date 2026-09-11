@@ -149,3 +149,16 @@ void GUI::RenderMultiViewport()
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault();
 }
+
+// Windows.vcxproj の WndProc (Window.cpp) から extern 参照される。
+// RmlUiGUI へメッセージを転送する前に、ImGui が既にその入力を欲しがっていないか確認するためのもの
+// (二重消費/入力の奪い合いを避ける)。GUI.lib は最終的な Application リンク時に解決される。
+bool GUI_WantCaptureMouse()
+{
+	return GUI::Get()->IsInitialized() && ImGui::GetIO().WantCaptureMouse;
+}
+
+bool GUI_WantCaptureKeyboard()
+{
+	return GUI::Get()->IsInitialized() && ImGui::GetIO().WantCaptureKeyboard;
+}

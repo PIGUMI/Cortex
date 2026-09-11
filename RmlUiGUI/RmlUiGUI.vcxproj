@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{66c5134d-657d-4f8d-9f09-76be8ae4c1f6}</ProjectGuid>
-    <RootNamespace>Application</RootNamespace>
+    <ProjectGuid>{9c3d1a6f-8b27-4e5a-bd41-6f02a9c7d835}</ProjectGuid>
+    <RootNamespace>RmlUiGUI</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -30,27 +30,27 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -73,14 +73,12 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>false</SDLCheck>
+      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;../Manager;../GUI;../RmlUiGUI;../ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -89,28 +87,26 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
+      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;../Manager;../GUI;../RmlUiGUI;../ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>false</SDLCheck>
+      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;../Manager;../GUI;../RmlUiGUI;../ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>..\DirectX12;..\Manager;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -119,14 +115,14 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
+      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../DirectX12;../Windows;../Helper;../LocalLLM;../Thread;../Manager;../GUI;../RmlUiGUI;../ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>..\DirectX12;..\Manager;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -134,41 +130,20 @@
     <ProjectReference Include="..\DirectX12\DirectX12.vcxproj">
       <Project>{b7157baa-e05f-4b67-a40f-4ddc95f518f8}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\GUI\GUI.vcxproj">
-      <Project>{e7b4c9a2-1f63-4d85-9a07-3c2e8f5d4b10}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\RmlUiGUI\RmlUiGUI.vcxproj">
-      <Project>{9c3d1a6f-8b27-4e5a-bd41-6f02a9c7d835}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Helper\Helper.vcxproj">
-      <Project>{63c13118-4ab6-4f5d-8eb3-6ba4a741c8d8}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\LocalLLM\LocalLLM.vcxproj">
-      <Project>{51eb3e23-22b9-4679-9dc7-2ddc13272751}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\Manager\Manager.vcxproj">
       <Project>{9aa7b4ae-e54b-48a1-a715-608347def720}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\thread\thread.vcxproj">
-      <Project>{a244d6e1-5559-400b-bb8d-35a0188f1323}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Windows\Windows.vcxproj">
-      <Project>{7c4c48da-1012-4891-b2c9-c77e8f97bf7e}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Template.cpp" />
+    <ClInclude Include="RenderInterface_DX12.h" />
+    <ClInclude Include="SystemInterface_Cortex.h" />
+    <ClInclude Include="RmlUiGUI.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Template.h" />
+    <ClCompile Include="RenderInterface_DX12.cpp" />
+    <ClCompile Include="SystemInterface_Cortex.cpp" />
+    <ClCompile Include="RmlUiGUI.cpp" />
   </ItemGroup>
-  <Target Name="CopyLlamaRuntimeDlls" AfterTargets="Build">
-    <ItemGroup>
-      <LlamaRuntimeDlls Include="$(ProjectDir)..\LocalLLM\llama.cpp\build\bin\Release\*.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(LlamaRuntimeDlls)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

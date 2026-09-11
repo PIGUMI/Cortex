@@ -23,6 +23,13 @@
       リンクは Application (x64) のみ (下の CortexUseAssimp、既定 true)。
       setup.ps1 未実行だと Application のリンクが assimp.lib 不足で失敗する。
 
+    - ThirdParty/RmlUi (+ ThirdParty/freetype) : 実ゲーム UI (.rml/.rcss)。静的ライブラリ。
+      RmlUiGUI プロジェクトが Rml::RenderInterface / SystemInterface を自前実装して
+      Cortex の DirectX12/Descriptor に接続する (RmlUi 公式 Backends は自前でデバイスを
+      作る自己完結サンプルなので使わない)。リンクは Application (x64) のみ
+      (下の CortexUseRmlUi、既定 true)。RMLUI_STATIC_LIB を全 Cortex プロジェクトへ定義する
+      (静的リンク時に必須。無いと RMLUICORE_API が dllimport のままで解決できない)。
+
   == CMake ビルドが必要な依存 (既定では無効) ==
     - LocalLLM/llama.cpp : ローカル LLM 推論 (BaseLLM クラス) 用。
       既定 (CortexUseLlama=false) では BaseLLM.cpp をビルド対象から外し、
@@ -50,6 +57,18 @@
          setup.ps1 を実行できない環境では /p:CortexUseAssimp=false でリンクを外せる。 -->
     <CortexUseAssimp Condition="'$(CortexUseAssimp)' == ''">true</CortexUseAssimp>
 
+    <!-- RmlUi。Include だけでビルド成果物には依存しない -->
+    <CortexRmlUiInclude>$(CortexRoot)ThirdParty\RmlUi\Include</CortexRmlUiInclude>
+    <!-- rmlui.lib の出力先 (RMLUI_SAMPLES=OFF のため本体のみ。Debug/Release とも同名) -->
+    <CortexRmlUiLibDir>$(CortexRoot)ThirdParty\RmlUi\build\lib\$(Configuration)</CortexRmlUiLibDir>
+    <!-- FreeType (RmlUi の既定フォントエンジン)。install 済みの config パッケージ配下 -->
+    <CortexFreeTypeLibDir>$(CortexRoot)ThirdParty\freetype\install\lib</CortexFreeTypeLibDir>
+    <!-- FreeType 自身のビルドは Debug のみ末尾 d が付く (RmlUi/assimp 同梱 zlib と同じ事情) -->
+    <CortexFreeTypeLib Condition="'$(Configuration)' == 'Debug'">freetyped.lib</CortexFreeTypeLib>
+    <CortexFreeTypeLib Condition="'$(CortexFreeTypeLib)' == ''">freetype.lib</CortexFreeTypeLib>
+    <!-- RmlUi をリンクするか。既定 true。ビルド未実行の環境では /p:CortexUseRmlUi=false -->
+    <CortexUseRmlUi Condition="'$(CortexUseRmlUi)' == ''">true</CortexUseRmlUi>
+
     <!-- ローカル LLM (llama.cpp / BaseLLM) を有効にするか。既定 false。 -->
     <CortexUseLlama Condition="'$(CortexUseLlama)' == ''">false</CortexUseLlama>
     <!-- llama.cpp を CUDA 有効でビルドした場合に true (CortexUseLlama=true が前提)。既定 false。 -->
@@ -63,8 +82,18 @@
        (SDK 標準ヘッダで素直にビルドさせるため)。 -->
   <ItemDefinitionGroup Condition="!$(MSBuildProjectDirectory.Contains('ThirdParty'))">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);$(CortexDirectXTexInclude);$(CortexAssimpInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CortexJsonInclude);$(CortexDxHeadersInclude)\directx;$(CortexDxHeadersInclude);$(CortexDirectXTexInclude);$(CortexAssimpInclude);$(CortexRmlUiInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RMLUI_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- RmlUi のリンクは Application (x64) かつ CortexUseRmlUi=true のときだけ。
+       rmlui.lib は同梱 FreeType に依存する (静的リンクなので両方必要)。 -->
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'Application' and '$(Platform)' == 'x64' and '$(CortexUseRmlUi)' == 'true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(CortexRmlUiLibDir);$(CortexFreeTypeLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>rmlui.lib;$(CortexFreeTypeLib);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
 
   <!-- assimp のリンクは Application (x64) かつ CortexUseAssimp=true のときだけ。

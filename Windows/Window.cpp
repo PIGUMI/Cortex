@@ -46,12 +46,52 @@ namespace {
 // ImGui Win32 バックエンドのメッセージハンドラ。
 // 実体は GUI プロジェクトの imgui_impl_win32.cpp (最終的な Application のリンク時に解決される)。
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+// GUI/RmlUiGUI プロジェクトの実体 (最終的な Application のリンク時に解決される)。
+extern bool GUI_WantCaptureMouse();
+extern bool GUI_WantCaptureKeyboard();
+extern bool RmlUiGUI_ProcessWin32Message(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+namespace {
+	bool IsMouseMessage(UINT message)
+	{
+		switch (message) {
+		case WM_MOUSEMOVE:
+		case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+		case WM_RBUTTONDOWN: case WM_RBUTTONUP:
+		case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+		case WM_MOUSEWHEEL:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool IsKeyboardMessage(UINT message)
+	{
+		switch (message) {
+		case WM_KEYDOWN: case WM_KEYUP:
+		case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+		case WM_CHAR:
+			return true;
+		default:
+			return false;
+		}
+	}
+}
 
 /* ウインドウプロシージャ */
 LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	// ImGui にメッセージを先に渡す (マウス/キーボード入力の取り込み)
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) return true;
+
+	// RmlUi (実ゲーム UI) へ転送。ImGui (デバッグツール) が同種の入力を欲しがっている間は
+	// 渡さない (入力の奪い合い回避。GUI_WantCaptureMouse/Keyboard 参照)
+	if ((IsMouseMessage(message) && !GUI_WantCaptureMouse()) ||
+	    (IsKeyboardMessage(message) && !GUI_WantCaptureKeyboard()))
+	{
+		if (RmlUiGUI_ProcessWin32Message(hWnd, message, wParam, lParam)) return true;
+	}
 
 	switch (message) {
 	case WM_COMMAND:

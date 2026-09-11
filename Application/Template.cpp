@@ -13,6 +13,7 @@
 #include "Worker.h"
 #include "GUI.h"
 #include "imgui.h"
+#include "RmlUiGUI.h"
 #include <mutex>
 
 
@@ -47,6 +48,7 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 		window->SetResizeCallback([directX12](int w, int h)
 			{
 				directX12->RequestResize(static_cast<UINT>(w), static_cast<UINT>(h));
+				RmlUiGUI::Get()->Resize(static_cast<UINT>(w), static_cast<UINT>(h));
 			});
 
 		/* Descriptorの初期化 */
@@ -54,6 +56,10 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 		/* ImGui (GUI) の初期化 — DirectX12 / Descriptor の後 */
 		GUI::Get()->Init(window->GetMainWindowHandle());
+
+		/* RmlUi (実ゲーム UI) の初期化 — DirectX12 / Descriptor の後 */
+		RmlUiGUI::Get()->Init(window->GetMainWindowHandle(), window->GetClientWidth(), window->GetClientHeight());
+		RmlUiGUI::Get()->LoadDocument("Assets/UI/demo.rml");
 	}
 
 	/* ループ処理 */
@@ -99,6 +105,9 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 					// ImGui フレーム開始 — この後に UI を構築する
 					GUI::Get()->BeginFrame();
+
+					// RmlUi 側の更新 (アニメーション・データバインディング等)
+					RmlUiGUI::Get()->Update();
 
 					// --- 動作確認用の小さなテストウィンドウ (720x480 でも収まる位置・サイズ) ---
 					{
@@ -194,6 +203,9 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 					// ここに描画処理を追加する
 
+					// RmlUi (実ゲーム UI) をシーン描画の後、ImGui (デバッグツール) より先に描画
+					RmlUiGUI::Get()->Render(directX12->GetCommandList(DirectX::DirectX12::CmdListType::Direct));
+
 					// シーン描画をすべて積んだ後、ImGui をバックバッファへ描画
 					GUI::Get()->EndFrame(directX12->GetCommandList(DirectX::DirectX12::CmdListType::Direct));
 
@@ -219,7 +231,8 @@ int TemplateMain(HINSTANCE hInstance, int nCmdShow)
 
 	/* 終了処理 */
 	{
-		GUI::Del();          // ImGui のバックエンドを先に破棄 (device / descriptor がまだ生きている必要がある)
+		RmlUiGUI::Del();     // RmlUi / ImGui のバックエンドを先に破棄 (device / descriptor がまだ生きている必要がある)
+		GUI::Del();
 		descriptor->Del();
 		directX12->Del();
 		window->DestroyInstance();
